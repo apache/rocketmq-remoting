@@ -17,11 +17,8 @@
 
 package org.apache.rocketmq.remoting.api;
 
-import org.apache.rocketmq.remoting.api.protocol.ProtocolFactory;
 import org.apache.rocketmq.remoting.api.serializable.SerializerFactory;
 
 public interface RemotingMarshaller {
-    ProtocolFactory protocolFactory();
-
     SerializerFactory serializerFactory();
 }

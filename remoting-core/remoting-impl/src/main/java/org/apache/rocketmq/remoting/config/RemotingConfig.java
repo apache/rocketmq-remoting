@@ -19,9 +19,8 @@ package org.apache.rocketmq.remoting.config;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
-import org.apache.rocketmq.remoting.api.protocol.Protocol;
 import org.apache.rocketmq.remoting.impl.protocol.compression.GZipCompressor;
-import org.apache.rocketmq.remoting.impl.protocol.serializer.MsgPackSerializer;
+import org.apache.rocketmq.remoting.impl.protocol.serializer.JsonSerializer;
 
 public class RemotingConfig extends TcpSocketConfig {
     private int connectionMaxRetries = 3;
@@ -38,8 +37,7 @@ public class RemotingConfig extends TcpSocketConfig {
     private int threadTaskLowWaterMark = 30000;
     private int threadTaskHighWaterMark = 50000;
     private int connectionRetryBackoffMillis = 3000;
-    private String protocolName = Protocol.MVP;
-    private String serializerName = MsgPackSerializer.SERIALIZER_NAME;
+    private String serializerName = JsonSerializer.SERIALIZER_NAME;
     private String compressorName = GZipCompressor.COMPRESSOR_NAME;
     private int serviceThreadBlockQueueSize = 50000;
     private boolean clientNativeEpollEnable = false;
@@ -147,14 +145,6 @@ public class RemotingConfig extends TcpSocketConfig {
 
     public void setConnectionRetryBackoffMillis(final int connectionRetryBackoffMillis) {
         this.connectionRetryBackoffMillis = connectionRetryBackoffMillis;
-    }
-
-    public String getProtocolName() {
-        return protocolName;
-    }
-
-    public void setProtocolName(final String protocolName) {
-        this.protocolName = protocolName;
     }
 
     public String getSerializerName() {

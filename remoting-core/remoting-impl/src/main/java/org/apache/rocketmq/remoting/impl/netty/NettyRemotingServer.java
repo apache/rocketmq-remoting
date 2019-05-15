@@ -35,13 +35,6 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.http2.Http2SecurityUtil;
-import io.netty.handler.ssl.OpenSsl;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.SslProvider;
-import io.netty.handler.ssl.SupportedCipherSuiteFilter;
-import io.netty.handler.ssl.util.SelfSignedCertificate;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
@@ -58,7 +51,8 @@ import org.apache.rocketmq.remoting.config.RemotingConfig;
 import org.apache.rocketmq.remoting.external.ThreadUtils;
 import org.apache.rocketmq.remoting.impl.channel.NettyChannelImpl;
 import org.apache.rocketmq.remoting.impl.netty.handler.ChannelStatistics;
-import org.apache.rocketmq.remoting.impl.netty.handler.ProtocolSelector;
+import org.apache.rocketmq.remoting.impl.netty.handler.Decoder;
+import org.apache.rocketmq.remoting.impl.netty.handler.Encoder;
 import org.apache.rocketmq.remoting.internal.JvmUtils;
 
 public class NettyRemotingServer extends NettyRemotingAbstract implements RemotingServer {
@@ -71,7 +65,6 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
     private Class<? extends ServerSocketChannel> socketChannelClass;
 
     private int port;
-    private SslContext sslContext;
 
     NettyRemotingServer(final RemotingConfig serverConfig) {
         super(serverConfig);
@@ -99,23 +92,6 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
 
         this.workerGroup = new DefaultEventExecutorGroup(serverConfig.getServerWorkerThreads(),
             ThreadUtils.newGenericThreadFactory("NettyWorkerThreads", serverConfig.getServerWorkerThreads()));
-
-        buildHttp2SslContext();
-    }
-
-    private void buildHttp2SslContext() {
-        try {
-            SslProvider provider = OpenSsl.isAvailable() ? SslProvider.OPENSSL : SslProvider.JDK;
-            SelfSignedCertificate ssc;
-            //NOTE: the cipher filter may not include all ciphers required by the HTTP/2 specification.
-            //Please refer to the HTTP/2 specification for cipher requirements.
-            ssc = new SelfSignedCertificate();
-            sslContext = SslContextBuilder.forServer(ssc.certificate(), ssc.privateKey())
-                .sslProvider(provider)
-                .ciphers(Http2SecurityUtil.CIPHERS, SupportedCipherSuiteFilter.INSTANCE).build();
-        } catch (Exception e) {
-            LOG.error("Can not build SSL context !", e);
-        }
     }
 
     private void applyOptions(ServerBootstrap bootstrap) {
@@ -162,9 +138,10 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                 ChannelPipeline cp = ch.pipeline();
 
                 cp.addLast(ChannelStatistics.NAME, new ChannelStatistics(channels));
-
-                cp.addFirst(ProtocolSelector.NAME, new ProtocolSelector(sslContext));
-                cp.addLast(workerGroup, new IdleStateHandler(serverConfig.getConnectionChannelReaderIdleSeconds(),
+                cp.addLast(workerGroup,
+                    new Encoder(),
+                    new Decoder(),
+                    new IdleStateHandler(serverConfig.getConnectionChannelReaderIdleSeconds(),
                         serverConfig.getConnectionChannelWriterIdleSeconds(),
                         serverConfig.getConnectionChannelIdleSeconds()),
                     new ServerConnectionHandler(),

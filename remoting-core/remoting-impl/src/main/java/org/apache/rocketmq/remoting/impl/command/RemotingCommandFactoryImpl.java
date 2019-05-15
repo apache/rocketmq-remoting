@@ -20,24 +20,28 @@ package org.apache.rocketmq.remoting.impl.command;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
 import org.apache.rocketmq.remoting.api.command.RemotingCommandFactory;
 import org.apache.rocketmq.remoting.api.command.TrafficType;
-import org.apache.rocketmq.remoting.common.RemotingCommandFactoryMeta;
+import org.apache.rocketmq.remoting.api.serializable.SerializerFactory;
+import org.apache.rocketmq.remoting.impl.protocol.serializer.JsonSerializer;
+import org.apache.rocketmq.remoting.impl.protocol.serializer.SerializerFactoryImpl;
 
 public class RemotingCommandFactoryImpl implements RemotingCommandFactory {
-    private RemotingCommandFactoryMeta remotingCommandFactoryMeta;
+    private final SerializerFactory serializerFactory = new SerializerFactoryImpl();
+    private byte serializeType = JsonSerializer.SERIALIZER_TYPE;
+
+    private byte PROTOCOL_MAGIC = 0x14;
 
     public RemotingCommandFactoryImpl() {
-        this(new RemotingCommandFactoryMeta());
     }
 
-    public RemotingCommandFactoryImpl(final RemotingCommandFactoryMeta remotingCommandFactoryMeta) {
-        this.remotingCommandFactoryMeta = remotingCommandFactoryMeta;
+    public RemotingCommandFactoryImpl(final String serializeName) {
+        this.serializeType = serializerFactory.type(serializeName);
     }
 
     @Override
     public RemotingCommand createRequest() {
         RemotingCommand request = new RemotingCommandImpl();
-        request.protocolType(this.remotingCommandFactoryMeta.getProtocolType());
-        request.serializerType(this.remotingCommandFactoryMeta.getSerializeType());
+        request.protocolType(this.PROTOCOL_MAGIC);
+        request.serializerType(this.serializeType);
         return request;
     }
 

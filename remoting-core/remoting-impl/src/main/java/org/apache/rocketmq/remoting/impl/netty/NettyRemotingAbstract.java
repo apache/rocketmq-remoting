@@ -48,19 +48,16 @@ import org.apache.rocketmq.remoting.api.interceptor.Interceptor;
 import org.apache.rocketmq.remoting.api.interceptor.InterceptorGroup;
 import org.apache.rocketmq.remoting.api.interceptor.RequestContext;
 import org.apache.rocketmq.remoting.api.interceptor.ResponseContext;
-import org.apache.rocketmq.remoting.api.protocol.ProtocolFactory;
 import org.apache.rocketmq.remoting.api.serializable.Serializer;
 import org.apache.rocketmq.remoting.api.serializable.SerializerFactory;
 import org.apache.rocketmq.remoting.common.ChannelEventListenerGroup;
 import org.apache.rocketmq.remoting.common.Pair;
-import org.apache.rocketmq.remoting.common.RemotingCommandFactoryMeta;
 import org.apache.rocketmq.remoting.common.ResponseResult;
 import org.apache.rocketmq.remoting.common.SemaphoreReleaseOnlyOnce;
 import org.apache.rocketmq.remoting.config.RemotingConfig;
 import org.apache.rocketmq.remoting.external.ThreadUtils;
 import org.apache.rocketmq.remoting.impl.channel.NettyChannelImpl;
 import org.apache.rocketmq.remoting.impl.command.RemotingCommandFactoryImpl;
-import org.apache.rocketmq.remoting.impl.protocol.ProtocolFactoryImpl;
 import org.apache.rocketmq.remoting.impl.protocol.serializer.SerializerFactoryImpl;
 import org.apache.rocketmq.remoting.internal.UIDGenerator;
 import org.jetbrains.annotations.NotNull;
@@ -69,7 +66,6 @@ import org.slf4j.LoggerFactory;
 
 public abstract class NettyRemotingAbstract implements RemotingService {
     protected static final Logger LOG = LoggerFactory.getLogger(NettyRemotingAbstract.class);
-    protected final ProtocolFactory protocolFactory = new ProtocolFactoryImpl();
     protected final SerializerFactory serializerFactory = new SerializerFactoryImpl();
     protected final ChannelEventExecutor channelEventExecutor = new ChannelEventExecutor("ChannelEventExecutor");
     private final Semaphore semaphoreOneway;
@@ -86,16 +82,12 @@ public abstract class NettyRemotingAbstract implements RemotingService {
     private ChannelEventListenerGroup channelEventListenerGroup = new ChannelEventListenerGroup();
 
     NettyRemotingAbstract(RemotingConfig clientConfig) {
-        this(clientConfig, new RemotingCommandFactoryMeta());
-    }
-
-    NettyRemotingAbstract(RemotingConfig clientConfig, RemotingCommandFactoryMeta remotingCommandFactoryMeta) {
         this.semaphoreOneway = new Semaphore(clientConfig.getClientOnewayInvokeSemaphore(), true);
         this.semaphoreAsync = new Semaphore(clientConfig.getClientAsyncInvokeSemaphore(), true);
         this.publicExecutor = ThreadUtils.newFixedThreadPool(
             clientConfig.getClientAsyncCallbackExecutorThreads(),
             10000, "Remoting-PublicExecutor", true);
-        this.remotingCommandFactory = new RemotingCommandFactoryImpl(remotingCommandFactoryMeta);
+        this.remotingCommandFactory = new RemotingCommandFactoryImpl(clientConfig.getSerializerName());
     }
 
     public SerializerFactory getSerializerFactory() {
@@ -513,11 +505,6 @@ public abstract class NettyRemotingAbstract implements RemotingService {
 
     public String getRemotingInstanceId() {
         return remotingInstanceId;
-    }
-
-    @Override
-    public ProtocolFactory protocolFactory() {
-        return this.protocolFactory;
     }
 
     @Override

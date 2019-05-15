@@ -33,13 +33,6 @@ import io.netty.channel.epoll.EpollSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.http2.Http2SecurityUtil;
-import io.netty.handler.ssl.OpenSsl;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.SslProvider;
-import io.netty.handler.ssl.SupportedCipherSuiteFilter;
-import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
@@ -52,21 +45,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import javax.net.ssl.SSLException;
 import org.apache.rocketmq.remoting.api.AsyncHandler;
 import org.apache.rocketmq.remoting.api.RemotingClient;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
 import org.apache.rocketmq.remoting.api.command.TrafficType;
 import org.apache.rocketmq.remoting.api.exception.RemoteConnectFailureException;
 import org.apache.rocketmq.remoting.api.exception.RemoteTimeoutException;
-import org.apache.rocketmq.remoting.api.protocol.Protocol;
-import org.apache.rocketmq.remoting.common.RemotingCommandFactoryMeta;
 import org.apache.rocketmq.remoting.config.RemotingConfig;
 import org.apache.rocketmq.remoting.external.ThreadUtils;
 import org.apache.rocketmq.remoting.impl.netty.handler.Decoder;
 import org.apache.rocketmq.remoting.impl.netty.handler.Encoder;
 import org.apache.rocketmq.remoting.impl.netty.handler.ExceptionHandler;
-import org.apache.rocketmq.remoting.impl.netty.handler.Http2Handler;
 import org.apache.rocketmq.remoting.internal.JvmUtils;
 
 public class NettyRemotingClient extends NettyRemotingAbstract implements RemotingClient {
@@ -80,10 +69,9 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
     private final ConcurrentHashMap<String, ChannelWrapper> channelTables = new ConcurrentHashMap<String, ChannelWrapper>();
     private final Lock lockChannelTables = new ReentrantLock();
     private EventExecutorGroup workerGroup;
-    private SslContext sslContext;
 
     NettyRemotingClient(final RemotingConfig clientConfig) {
-        super(clientConfig, new RemotingCommandFactoryMeta(clientConfig.getProtocolName(), clientConfig.getSerializerName()));
+        super(clientConfig);
         this.clientConfig = clientConfig;
 
         if (JvmUtils.isLinux() && this.clientConfig.isClientNativeEpollEnable()) {
@@ -98,10 +86,6 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
 
         this.workerGroup = new DefaultEventExecutorGroup(clientConfig.getClientWorkerThreads(),
             ThreadUtils.newGenericThreadFactory("NettyClientWorkerThreads", clientConfig.getClientWorkerThreads()));
-
-        if (Protocol.HTTP2.equals(clientConfig.getProtocolName())) {
-            buildSslContext();
-        }
     }
 
     private void applyOptions(Bootstrap bootstrap) {
@@ -134,9 +118,6 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
             .handler(new ChannelInitializer<SocketChannel>() {
                 @Override
                 public void initChannel(SocketChannel ch) throws Exception {
-                    if (Protocol.HTTP2.equals(clientConfig.getProtocolName())) {
-                        ch.pipeline().addFirst(sslContext.newHandler(ch.alloc()), Http2Handler.newHandler(false));
-                    }
                     ch.pipeline().addLast(workerGroup, new Decoder(), new Encoder(), new IdleStateHandler(clientConfig.getConnectionChannelReaderIdleSeconds(),
                             clientConfig.getConnectionChannelWriterIdleSeconds(), clientConfig.getConnectionChannelIdleSeconds()),
                         new ClientConnectionHandler(), new EventDispatcher(), new ExceptionHandler());
@@ -146,21 +127,6 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
         applyOptions(clientBootstrap);
 
         startUpHouseKeepingService();
-    }
-
-    private void buildSslContext() {
-        SslProvider provider = OpenSsl.isAvailable() ? SslProvider.OPENSSL : SslProvider.JDK;
-        try {
-            sslContext = SslContextBuilder.forClient()
-                .sslProvider(provider)
-                    /* NOTE: the cipher filter may not include all ciphers required by the HTTP/2 specification.
-                     * Please refer to the HTTP/2 specification for cipher requirements. */
-                .ciphers(Http2SecurityUtil.CIPHERS, SupportedCipherSuiteFilter.INSTANCE)
-                .trustManager(InsecureTrustManagerFactory.INSTANCE)
-                .build();
-        } catch (SSLException e) {
-            e.printStackTrace();
-        }
     }
 
     @Override
