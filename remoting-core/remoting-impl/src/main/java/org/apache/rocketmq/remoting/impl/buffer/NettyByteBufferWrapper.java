@@ -49,13 +49,13 @@ public class NettyByteBufferWrapper implements ByteBufferWrapper {
     }
 
     @Override
-    public void writeShort(final short value) {
-        buffer.writeShort(value);
+    public void writeInt(int data) {
+        buffer.writeInt(data);
     }
 
     @Override
-    public void writeInt(int data) {
-        buffer.writeInt(data);
+    public void writeShort(final short value) {
+        buffer.writeShort(value);
     }
 
     @Override
@@ -69,12 +69,12 @@ public class NettyByteBufferWrapper implements ByteBufferWrapper {
     }
 
     @Override
-    public void readBytes(final ByteBuffer dst) {
+    public void readBytes(byte[] dst) {
         buffer.readBytes(dst);
     }
 
     @Override
-    public void readBytes(byte[] dst) {
+    public void readBytes(final ByteBuffer dst) {
         buffer.readBytes(dst);
     }
 

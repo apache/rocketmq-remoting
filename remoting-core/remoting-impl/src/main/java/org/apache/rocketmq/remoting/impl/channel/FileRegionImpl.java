@@ -56,11 +56,6 @@ public class FileRegionImpl extends AbstractReferenceCounted implements FileRegi
     }
 
     @Override
-    protected void deallocate() {
-        chunkRegion.release();
-    }
-
-    @Override
     public FileRegion retain() {
         super.retain();
         return this;
@@ -75,6 +70,11 @@ public class FileRegionImpl extends AbstractReferenceCounted implements FileRegi
     @Override
     public FileRegion touch() {
         return this;
+    }
+
+    @Override
+    protected void deallocate() {
+        chunkRegion.release();
     }
 
     @Override

@@ -94,36 +94,6 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
             ThreadUtils.newGenericThreadFactory("NettyWorkerThreads", serverConfig.getServerWorkerThreads()));
     }
 
-    private void applyOptions(ServerBootstrap bootstrap) {
-        //option() is for the NioServerSocketChannel that accepts incoming connections.
-        //childOption() is for the Channels accepted by the parent ServerChannel, which is NioServerSocketChannel in this case
-        if (null != serverConfig) {
-            if (serverConfig.getTcpSoBacklogSize() > 0) {
-                bootstrap.option(ChannelOption.SO_BACKLOG, serverConfig.getTcpSoBacklogSize());
-            }
-
-            if (serverConfig.getTcpSoLinger() > 0) {
-                bootstrap.option(ChannelOption.SO_LINGER, serverConfig.getTcpSoLinger());
-            }
-
-            if (serverConfig.getTcpSoSndBufSize() > 0) {
-                bootstrap.childOption(ChannelOption.SO_SNDBUF, serverConfig.getTcpSoSndBufSize());
-            }
-            if (serverConfig.getTcpSoRcvBufSize() > 0) {
-                bootstrap.childOption(ChannelOption.SO_RCVBUF, serverConfig.getTcpSoRcvBufSize());
-            }
-
-            bootstrap.option(ChannelOption.SO_REUSEADDR, serverConfig.isTcpSoReuseAddress()).
-                childOption(ChannelOption.SO_KEEPALIVE, serverConfig.isTcpSoKeepAlive()).
-                childOption(ChannelOption.TCP_NODELAY, serverConfig.isTcpSoNoDelay()).
-                option(ChannelOption.CONNECT_TIMEOUT_MILLIS, serverConfig.getTcpSoTimeout());
-        }
-
-        if (serverConfig.isServerPooledBytebufAllocatorEnable()) {
-            bootstrap.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
-        }
-    }
-
     @Override
     public void start() {
         super.start();
@@ -155,6 +125,36 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         this.port = ((InetSocketAddress) channelFuture.channel().localAddress()).getPort();
 
         startUpHouseKeepingService();
+    }
+
+    private void applyOptions(ServerBootstrap bootstrap) {
+        //option() is for the NioServerSocketChannel that accepts incoming connections.
+        //childOption() is for the Channels accepted by the parent ServerChannel, which is NioServerSocketChannel in this case
+        if (null != serverConfig) {
+            if (serverConfig.getTcpSoBacklogSize() > 0) {
+                bootstrap.option(ChannelOption.SO_BACKLOG, serverConfig.getTcpSoBacklogSize());
+            }
+
+            if (serverConfig.getTcpSoLinger() > 0) {
+                bootstrap.option(ChannelOption.SO_LINGER, serverConfig.getTcpSoLinger());
+            }
+
+            if (serverConfig.getTcpSoSndBufSize() > 0) {
+                bootstrap.childOption(ChannelOption.SO_SNDBUF, serverConfig.getTcpSoSndBufSize());
+            }
+            if (serverConfig.getTcpSoRcvBufSize() > 0) {
+                bootstrap.childOption(ChannelOption.SO_RCVBUF, serverConfig.getTcpSoRcvBufSize());
+            }
+
+            bootstrap.option(ChannelOption.SO_REUSEADDR, serverConfig.isTcpSoReuseAddress()).
+                childOption(ChannelOption.SO_KEEPALIVE, serverConfig.isTcpSoKeepAlive()).
+                childOption(ChannelOption.TCP_NODELAY, serverConfig.isTcpSoNoDelay()).
+                option(ChannelOption.CONNECT_TIMEOUT_MILLIS, serverConfig.getTcpSoTimeout());
+        }
+
+        if (serverConfig.isServerPooledBytebufAllocatorEnable()) {
+            bootstrap.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
+        }
     }
 
     @Override
@@ -203,12 +203,6 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
 
     private class ServerConnectionHandler extends ChannelDuplexHandler {
         @Override
-        public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
-            LOG.warn("Channel {} channelWritabilityChanged event triggered - bytesBeforeUnwritable:{},bytesBeforeWritable:{}", ctx.channel(),
-                ctx.channel().bytesBeforeUnwritable(), ctx.channel().bytesBeforeWritable());
-        }
-
-        @Override
         public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
             super.channelRegistered(ctx);
         }
@@ -246,6 +240,12 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                 }
             }
             ctx.fireUserEventTriggered(evt);
+        }
+
+        @Override
+        public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
+            LOG.warn("Channel {} channelWritabilityChanged event triggered - bytesBeforeUnwritable:{},bytesBeforeWritable:{}", ctx.channel(),
+                ctx.channel().bytesBeforeUnwritable(), ctx.channel().bytesBeforeWritable());
         }
 
         @Override

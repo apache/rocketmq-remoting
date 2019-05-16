@@ -28,10 +28,9 @@ public class CodecHelper {
     // ProtocolMagic(1) + TotalLength(4) + CmdCode(2) + CmdVersion(2) + RequestID(4) + TrafficType(1) + OpCode(2)
     // + RemarkLen(2) + PropertiesSize(2) + PayloadLen(4);
     public final static int MIN_PROTOCOL_LEN = 1 + 4 + 2 + 2 + 4 + 1 + 2 + 2 + 2 + 4;
+    public final static byte PROTOCOL_MAGIC = 0x14;
     private final static char PROPERTY_SEPARATOR = '\n';
     private final static Charset REMOTING_CHARSET = Charset.forName("UTF-8");
-
-    public final static byte PROTOCOL_MAGIC = 0x14;
     private final static int REMARK_MAX_LEN = Short.MAX_VALUE;
     private final static int PROPERTY_MAX_LEN = 524288; // 512KB
     private final static int PAYLOAD_MAX_LEN = 16777216; // 16MB
@@ -41,7 +40,7 @@ public class CodecHelper {
         out.writeByte(PROTOCOL_MAGIC);
 
         short remarkLen = 0;
-        byte [] remark = null;
+        byte[] remark = null;
         if (command.remark() != null) {
             remark = command.remark().getBytes(REMOTING_CHARSET);
             if (remark.length > REMARK_MAX_LEN) {
@@ -123,7 +122,6 @@ public class CodecHelper {
         cmd.requestID(in.readInt());
         cmd.trafficType(TrafficType.parse(in.readByte()));
         cmd.opCode(in.readShort());
-
 
         short remarkLen = in.readShort();
         if (remarkLen > 0) {

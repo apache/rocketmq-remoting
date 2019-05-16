@@ -42,6 +42,26 @@ public class RemotingCommandImpl implements RemotingCommand {
     }
 
     @Override
+    public short cmdCode() {
+        return this.cmdCode;
+    }
+
+    @Override
+    public void cmdCode(short code) {
+        this.cmdCode = code;
+    }
+
+    @Override
+    public short cmdVersion() {
+        return this.cmdVersion;
+    }
+
+    @Override
+    public void cmdVersion(short version) {
+        this.cmdVersion = version;
+    }
+
+    @Override
     public int requestID() {
         return requestId;
     }
@@ -99,26 +119,6 @@ public class RemotingCommandImpl implements RemotingCommand {
     @Override
     public void property(String key, String value) {
         this.properties.put(key, value);
-    }
-
-    @Override
-    public short cmdCode() {
-        return this.cmdCode;
-    }
-
-    @Override
-    public void cmdCode(short code) {
-        this.cmdCode = code;
-    }
-
-    @Override
-    public short cmdVersion() {
-        return this.cmdVersion;
-    }
-
-    @Override
-    public void cmdVersion(short version) {
-        this.cmdVersion = version;
     }
 
     @Override

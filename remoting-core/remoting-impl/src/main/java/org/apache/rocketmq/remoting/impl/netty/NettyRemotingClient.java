@@ -88,6 +88,25 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
             ThreadUtils.newGenericThreadFactory("NettyClientWorkerThreads", clientConfig.getClientWorkerThreads()));
     }
 
+    @Override
+    public void start() {
+        super.start();
+
+        this.clientBootstrap.group(this.ioGroup).channel(socketChannelClass)
+            .handler(new ChannelInitializer<SocketChannel>() {
+                @Override
+                public void initChannel(SocketChannel ch) throws Exception {
+                    ch.pipeline().addLast(workerGroup, new Decoder(), new Encoder(), new IdleStateHandler(clientConfig.getConnectionChannelReaderIdleSeconds(),
+                            clientConfig.getConnectionChannelWriterIdleSeconds(), clientConfig.getConnectionChannelIdleSeconds()),
+                        new ClientConnectionHandler(), new EventDispatcher(), new ExceptionHandler());
+                }
+            });
+
+        applyOptions(clientBootstrap);
+
+        startUpHouseKeepingService();
+    }
+
     private void applyOptions(Bootstrap bootstrap) {
         if (null != clientConfig) {
             if (clientConfig.getTcpSoLinger() > 0) {
@@ -108,25 +127,6 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
                 option(ChannelOption.WRITE_BUFFER_WATER_MARK, new WriteBufferWaterMark(clientConfig.getWriteBufLowWaterMark(),
                     clientConfig.getWriteBufHighWaterMark()));
         }
-    }
-
-    @Override
-    public void start() {
-        super.start();
-
-        this.clientBootstrap.group(this.ioGroup).channel(socketChannelClass)
-            .handler(new ChannelInitializer<SocketChannel>() {
-                @Override
-                public void initChannel(SocketChannel ch) throws Exception {
-                    ch.pipeline().addLast(workerGroup, new Decoder(), new Encoder(), new IdleStateHandler(clientConfig.getConnectionChannelReaderIdleSeconds(),
-                            clientConfig.getConnectionChannelWriterIdleSeconds(), clientConfig.getConnectionChannelIdleSeconds()),
-                        new ClientConnectionHandler(), new EventDispatcher(), new ExceptionHandler());
-                }
-            });
-
-        applyOptions(clientBootstrap);
-
-        startUpHouseKeepingService();
     }
 
     @Override
@@ -198,74 +198,6 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
         } catch (InterruptedException e) {
             LOG.error("Close channel error !", e);
         }
-    }
-
-    private Channel createIfAbsent(final String addr) {
-        ChannelWrapper cw = this.channelTables.get(addr);
-        if (cw != null && cw.isActive()) {
-            return cw.getChannel();
-        }
-        return this.createChannel(addr);
-    }
-
-    //FIXME need test to verify
-    private Channel createChannel(final String addr) {
-        ChannelWrapper cw = null;
-        try {
-            if (this.lockChannelTables.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
-                try {
-                    boolean createNewConnection;
-                    cw = this.channelTables.get(addr);
-                    if (cw != null) {
-                        if (cw.isActive()) {
-                            return cw.getChannel();
-                        } else if (!cw.getChannelFuture().isDone()) {
-                            createNewConnection = false;
-                        } else {
-                            this.channelTables.remove(addr);
-                            createNewConnection = true;
-                        }
-                    } else {
-                        createNewConnection = true;
-                    }
-
-                    if (createNewConnection) {
-                        String[] s = addr.split(":");
-                        SocketAddress socketAddress = new InetSocketAddress(s[0], Integer.valueOf(s[1]));
-                        ChannelFuture channelFuture = this.clientBootstrap.connect(socketAddress);
-                        LOG.info("createChannel: begin to connect remote host[{}] asynchronously", addr);
-                        cw = new ChannelWrapper(channelFuture);
-                        this.channelTables.put(addr, cw);
-                    }
-                } catch (Exception e) {
-                    LOG.error("createChannel: create channel exception", e);
-                } finally {
-                    this.lockChannelTables.unlock();
-                }
-            } else {
-                LOG.warn("createChannel: try to lock channel table, but timeout, {}ms", LOCK_TIMEOUT_MILLIS);
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        if (cw != null) {
-            ChannelFuture channelFuture = cw.getChannelFuture();
-            if (channelFuture.awaitUninterruptibly(this.clientConfig.getClientConnectionFutureAwaitTimeoutMillis())) {
-                if (cw.isActive()) {
-                    LOG.info("createChannel: connect remote host[{}] success, {}", addr, channelFuture.toString());
-                    return cw.getChannel();
-                } else {
-                    LOG.warn("createChannel: connect remote host[" + addr + "] failed, and destroy the channel" + channelFuture.toString(), channelFuture.cause());
-                    this.closeChannel(addr, cw.getChannel());
-                }
-            } else {
-                LOG.warn("createChannel: connect remote host[{}] timeout {}ms, {}, and destroy the channel", addr, this.clientConfig.getClientConnectionFutureAwaitTimeoutMillis(),
-                    channelFuture.toString());
-                this.closeChannel(addr, cw.getChannel());
-            }
-        }
-        return null;
     }
 
     private void closeChannel(final Channel channel) {
@@ -344,6 +276,74 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
 
     }
 
+    private Channel createIfAbsent(final String addr) {
+        ChannelWrapper cw = this.channelTables.get(addr);
+        if (cw != null && cw.isActive()) {
+            return cw.getChannel();
+        }
+        return this.createChannel(addr);
+    }
+
+    //FIXME need test to verify
+    private Channel createChannel(final String addr) {
+        ChannelWrapper cw = null;
+        try {
+            if (this.lockChannelTables.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
+                try {
+                    boolean createNewConnection;
+                    cw = this.channelTables.get(addr);
+                    if (cw != null) {
+                        if (cw.isActive()) {
+                            return cw.getChannel();
+                        } else if (!cw.getChannelFuture().isDone()) {
+                            createNewConnection = false;
+                        } else {
+                            this.channelTables.remove(addr);
+                            createNewConnection = true;
+                        }
+                    } else {
+                        createNewConnection = true;
+                    }
+
+                    if (createNewConnection) {
+                        String[] s = addr.split(":");
+                        SocketAddress socketAddress = new InetSocketAddress(s[0], Integer.valueOf(s[1]));
+                        ChannelFuture channelFuture = this.clientBootstrap.connect(socketAddress);
+                        LOG.info("createChannel: begin to connect remote host[{}] asynchronously", addr);
+                        cw = new ChannelWrapper(channelFuture);
+                        this.channelTables.put(addr, cw);
+                    }
+                } catch (Exception e) {
+                    LOG.error("createChannel: create channel exception", e);
+                } finally {
+                    this.lockChannelTables.unlock();
+                }
+            } else {
+                LOG.warn("createChannel: try to lock channel table, but timeout, {}ms", LOCK_TIMEOUT_MILLIS);
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        if (cw != null) {
+            ChannelFuture channelFuture = cw.getChannelFuture();
+            if (channelFuture.awaitUninterruptibly(this.clientConfig.getClientConnectionFutureAwaitTimeoutMillis())) {
+                if (cw.isActive()) {
+                    LOG.info("createChannel: connect remote host[{}] success, {}", addr, channelFuture.toString());
+                    return cw.getChannel();
+                } else {
+                    LOG.warn("createChannel: connect remote host[" + addr + "] failed, and destroy the channel" + channelFuture.toString(), channelFuture.cause());
+                    this.closeChannel(addr, cw.getChannel());
+                }
+            } else {
+                LOG.warn("createChannel: connect remote host[{}] timeout {}ms, {}, and destroy the channel", addr, this.clientConfig.getClientConnectionFutureAwaitTimeoutMillis(),
+                    channelFuture.toString());
+                this.closeChannel(addr, cw.getChannel());
+            }
+        }
+        return null;
+    }
+
     @Override
     public void invokeAsync(final String address, final RemotingCommand request, final AsyncHandler asyncHandler,
         final long timeoutMillis) {
@@ -403,12 +403,6 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
     private class ClientConnectionHandler extends ChannelDuplexHandler {
 
         @Override
-        public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
-            LOG.warn("Channel {} channelWritabilityChanged event triggered - bytesBeforeUnwritable:{},bytesBeforeWritable:{}", ctx.channel(),
-                ctx.channel().bytesBeforeUnwritable(), ctx.channel().bytesBeforeWritable());
-        }
-
-        @Override
         public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress, SocketAddress localAddress,
             ChannelPromise promise)
             throws Exception {
@@ -452,6 +446,12 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
             }
 
             ctx.fireUserEventTriggered(evt);
+        }
+
+        @Override
+        public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
+            LOG.warn("Channel {} channelWritabilityChanged event triggered - bytesBeforeUnwritable:{},bytesBeforeWritable:{}", ctx.channel(),
+                ctx.channel().bytesBeforeUnwritable(), ctx.channel().bytesBeforeWritable());
         }
 
         @Override

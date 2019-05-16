@@ -49,7 +49,21 @@ public final class ThreadUtils {
         return new ThreadPoolExecutor(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, newGenericThreadFactory(processName, isDaemon));
     }
 
-    public static ExecutorService newFixedThreadPool(int nThreads, int workQueueCapacity, String processName, boolean isDaemon) {
+    public static ThreadFactory newGenericThreadFactory(final String processName, final boolean isDaemon) {
+        return new ThreadFactory() {
+            private AtomicInteger threadIndex = new AtomicInteger(0);
+
+            @Override
+            public Thread newThread(Runnable r) {
+                Thread thread = new Thread(r, String.format("%s_%d", processName, this.threadIndex.incrementAndGet()));
+                thread.setDaemon(isDaemon);
+                return thread;
+            }
+        };
+    }
+
+    public static ExecutorService newFixedThreadPool(int nThreads, int workQueueCapacity, String processName,
+        boolean isDaemon) {
         return new ThreadPoolExecutor(
             nThreads,
             nThreads,
@@ -78,19 +92,6 @@ public final class ThreadUtils {
 
     public static ThreadFactory newGenericThreadFactory(String processName, int threads) {
         return newGenericThreadFactory(processName, threads, false);
-    }
-
-    public static ThreadFactory newGenericThreadFactory(final String processName, final boolean isDaemon) {
-        return new ThreadFactory() {
-            private AtomicInteger threadIndex = new AtomicInteger(0);
-
-            @Override
-            public Thread newThread(Runnable r) {
-                Thread thread = new Thread(r, String.format("%s_%d", processName, this.threadIndex.incrementAndGet()));
-                thread.setDaemon(isDaemon);
-                return thread;
-            }
-        };
     }
 
     public static ThreadFactory newGenericThreadFactory(final String processName, final int threads,

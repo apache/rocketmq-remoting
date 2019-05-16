@@ -70,6 +70,11 @@ public class NettyChannelImpl implements RemotingChannel {
     }
 
     @Override
+    public int hashCode() {
+        return channel != null ? channel.hashCode() : 0;
+    }
+
+    @Override
     public boolean equals(final Object o) {
         if (this == o)
             return true;
@@ -80,11 +85,6 @@ public class NettyChannelImpl implements RemotingChannel {
 
         return channel != null ? channel.equals(that.channel) : that.channel == null;
 
-    }
-
-    @Override
-    public int hashCode() {
-        return channel != null ? channel.hashCode() : 0;
     }
 
     @Override

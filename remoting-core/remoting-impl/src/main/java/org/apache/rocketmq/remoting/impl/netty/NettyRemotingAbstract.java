@@ -100,6 +100,31 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         }, 3000, 1000, TimeUnit.MICROSECONDS);
     }
 
+    void scanResponseTable() {
+        /*
+        Iterator<Map.Entry<Integer, ResponseResult>> iterator = this.ackTables.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<Integer, ResponseResult> next = iterator.next();
+            ResponseResult result = next.getValue();
+
+            if ((result.getBeginTimestamp() + result.getTimeoutMillis()) <= System.currentTimeMillis()) {
+                iterator.remove();
+                try {
+                    long timeoutMillis = result.getTimeoutMillis();
+                    long costTimeMillis = System.currentTimeMillis() - result.getBeginTimestamp();
+                    result.onTimeout(timeoutMillis, costTimeMillis);
+                    LOG.error("scan response table command {} failed", result.getRequestId());
+                } catch (Throwable e) {
+                    LOG.warn("Error occurred when execute timeout callback !", e);
+                } finally {
+                    result.release();
+                    LOG.warn("Removed timeout request {} ", result);
+                }
+            }
+        }
+        */
+    }
+
     @Override
     public void start() {
         if (this.channelEventListenerGroup.size() > 0) {
@@ -158,52 +183,6 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         }
     }
 
-    @NotNull
-    private Runnable buildProcessorTask(final ChannelHandlerContext ctx, final RemotingCommand cmd,
-        final Pair<RequestProcessor, ExecutorService> processorExecutorPair, final RemotingChannel channel) {
-        return new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    interceptorGroup.beforeRequest(new RequestContext(RemotingEndPoint.RESPONSE,
-                        extractRemoteAddress(ctx.channel()), cmd));
-
-                    RemotingCommand response = processorExecutorPair.getLeft().processRequest(channel, cmd);
-
-                    interceptorGroup.afterResponseReceived(new ResponseContext(RemotingEndPoint.RESPONSE,
-                        extractRemoteAddress(ctx.channel()), cmd, response));
-
-                    handleResponse(response, cmd, ctx);
-                } catch (Throwable e) {
-                    LOG.error(String.format("Process request %s error !", cmd.toString()), e);
-
-                    handleException(e, cmd, ctx);
-                }
-            }
-        };
-    }
-
-    private void handleException(Throwable e, RemotingCommand cmd, ChannelHandlerContext ctx) {
-        if (cmd.trafficType() != TrafficType.REQUEST_ONEWAY) {
-            //FiXME Exception interceptor can not throw exception
-            interceptorGroup.onException(new ExceptionContext(RemotingEndPoint.RESPONSE, extractRemoteAddress(ctx.channel()), cmd, e, ""));
-        }
-    }
-
-    private void handleResponse(RemotingCommand response, RemotingCommand cmd, ChannelHandlerContext ctx) {
-        if (cmd.trafficType() != TrafficType.REQUEST_ONEWAY) {
-            if (response != null) {
-                try {
-                    writeAndFlush(ctx.channel(), response);
-                } catch (Throwable e) {
-                    LOG.error(String.format("Process request %s success, but transfer response %s failed !",
-                        cmd.toString(), response.toString()), e);
-                }
-            }
-        }
-
-    }
-
     private void processResponseCommand(ChannelHandlerContext ctx, RemotingCommand cmd) {
         final ResponseResult responseResult = ackTables.get(cmd.requestID());
         if (responseResult != null) {
@@ -254,8 +233,33 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         }
     }
 
-    private void writeAndFlush(final Channel channel, final Object msg, final ChannelFutureListener listener) {
-        channel.writeAndFlush(msg).addListener(listener);
+    @NotNull
+    private Runnable buildProcessorTask(final ChannelHandlerContext ctx, final RemotingCommand cmd,
+        final Pair<RequestProcessor, ExecutorService> processorExecutorPair, final RemotingChannel channel) {
+        return new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    interceptorGroup.beforeRequest(new RequestContext(RemotingEndPoint.RESPONSE,
+                        extractRemoteAddress(ctx.channel()), cmd));
+
+                    RemotingCommand response = processorExecutorPair.getLeft().processRequest(channel, cmd);
+
+                    interceptorGroup.afterResponseReceived(new ResponseContext(RemotingEndPoint.RESPONSE,
+                        extractRemoteAddress(ctx.channel()), cmd, response));
+
+                    handleResponse(response, cmd, ctx);
+                } catch (Throwable e) {
+                    LOG.error(String.format("Process request %s error !", cmd.toString()), e);
+
+                    handleException(e, cmd, ctx);
+                }
+            }
+        };
+    }
+
+    protected String extractRemoteAddress(Channel channel) {
+        return ((InetSocketAddress) channel.remoteAddress()).getAddress().getHostAddress();
     }
 
     private void writeAndFlush(final Channel channel, final Object msg) {
@@ -266,29 +270,25 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         return this.publicExecutor;
     }
 
-    void scanResponseTable() {
-        /*
-        Iterator<Map.Entry<Integer, ResponseResult>> iterator = this.ackTables.entrySet().iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<Integer, ResponseResult> next = iterator.next();
-            ResponseResult result = next.getValue();
-
-            if ((result.getBeginTimestamp() + result.getTimeoutMillis()) <= System.currentTimeMillis()) {
-                iterator.remove();
+    private void handleResponse(RemotingCommand response, RemotingCommand cmd, ChannelHandlerContext ctx) {
+        if (cmd.trafficType() != TrafficType.REQUEST_ONEWAY) {
+            if (response != null) {
                 try {
-                    long timeoutMillis = result.getTimeoutMillis();
-                    long costTimeMillis = System.currentTimeMillis() - result.getBeginTimestamp();
-                    result.onTimeout(timeoutMillis, costTimeMillis);
-                    LOG.error("scan response table command {} failed", result.getRequestId());
+                    writeAndFlush(ctx.channel(), response);
                 } catch (Throwable e) {
-                    LOG.warn("Error occurred when execute timeout callback !", e);
-                } finally {
-                    result.release();
-                    LOG.warn("Removed timeout request {} ", result);
+                    LOG.error(String.format("Process request %s success, but transfer response %s failed !",
+                        cmd.toString(), response.toString()), e);
                 }
             }
         }
-        */
+
+    }
+
+    private void handleException(Throwable e, RemotingCommand cmd, ChannelHandlerContext ctx) {
+        if (cmd.trafficType() != TrafficType.REQUEST_ONEWAY) {
+            //FiXME Exception interceptor can not throw exception
+            interceptorGroup.onException(new ExceptionContext(RemotingEndPoint.RESPONSE, extractRemoteAddress(ctx.channel()), cmd, e, ""));
+        }
     }
 
     public RemotingCommand invokeWithInterceptor(final Channel channel, final RemotingCommand request,
@@ -356,6 +356,10 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         } finally {
             this.ackTables.remove(request.requestID());
         }
+    }
+
+    private void writeAndFlush(final Channel channel, final Object msg, final ChannelFutureListener listener) {
+        channel.writeAndFlush(msg).addListener(listener);
     }
 
     public void invokeAsyncWithInterceptor(final Channel channel, final RemotingCommand request,
@@ -486,13 +490,9 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         }
     }
 
-    public String getRemotingInstanceId() {
-        return remotingInstanceId;
-    }
-
     @Override
-    public RemotingCommandFactory commandFactory() {
-        return this.remotingCommandFactory;
+    public void registerInterceptor(Interceptor interceptor) {
+        this.interceptorGroup.registerInterceptor(interceptor);
     }
 
     @Override
@@ -514,27 +514,27 @@ public abstract class NettyRemotingAbstract implements RemotingService {
     }
 
     @Override
+    public Pair<RequestProcessor, ExecutorService> processor(short requestCode) {
+        return processorTables.get(requestCode);
+    }
+
+    @Override
     public String remotingInstanceId() {
         return this.getRemotingInstanceId();
     }
 
+    public String getRemotingInstanceId() {
+        return remotingInstanceId;
+    }
+
     @Override
-    public void registerInterceptor(Interceptor interceptor) {
-        this.interceptorGroup.registerInterceptor(interceptor);
+    public RemotingCommandFactory commandFactory() {
+        return this.remotingCommandFactory;
     }
 
     @Override
     public void registerChannelEventListener(ChannelEventListener listener) {
         this.channelEventListenerGroup.registerChannelEventListener(listener);
-    }
-
-    @Override
-    public Pair<RequestProcessor, ExecutorService> processor(short requestCode) {
-        return processorTables.get(requestCode);
-    }
-
-    protected String extractRemoteAddress(Channel channel) {
-        return ((InetSocketAddress) channel.remoteAddress()).getAddress().getHostAddress();
     }
 
     class ChannelEventExecutor extends Thread {

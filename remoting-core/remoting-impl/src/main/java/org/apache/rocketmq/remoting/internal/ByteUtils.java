@@ -34,6 +34,26 @@ public final class ByteUtils {
     }
 
     /**
+     * Compare two two-dimensional byte arrays. No null checks are performed.
+     *
+     * @param left the first byte array
+     * @param right the second byte array
+     * @return the result of the comparison
+     */
+    public static boolean equals(byte[][] left, byte[][] right) {
+        if (left.length != right.length) {
+            return false;
+        }
+
+        boolean result = true;
+        for (int i = left.length - 1; i >= 0; i--) {
+            result &= ByteUtils.equals(left[i], right[i]);
+        }
+
+        return result;
+    }
+
+    /**
      * Compare two byte arrays (perform null checks beforehand).
      *
      * @param left the first byte array
@@ -55,26 +75,6 @@ public final class ByteUtils {
         for (int i = left.length - 1; i >= 0; i--) {
             result &= left[i] == right[i];
         }
-        return result;
-    }
-
-    /**
-     * Compare two two-dimensional byte arrays. No null checks are performed.
-     *
-     * @param left the first byte array
-     * @param right the second byte array
-     * @return the result of the comparison
-     */
-    public static boolean equals(byte[][] left, byte[][] right) {
-        if (left.length != right.length) {
-            return false;
-        }
-
-        boolean result = true;
-        for (int i = left.length - 1; i >= 0; i--) {
-            result &= ByteUtils.equals(left[i], right[i]);
-        }
-
         return result;
     }
 
@@ -104,16 +104,16 @@ public final class ByteUtils {
     }
 
     /**
-     * Computes a hashcode based on the contents of a one-dimensional byte array
-     * rather than its identity.
+     * Computes a hashcode based on the contents of a three-dimensional byte
+     * array rather than its identity.
      *
      * @param array the array to compute the hashcode of
      * @return the hashcode
      */
-    public static int deepHashCode(byte[] array) {
+    public static int deepHashCode(byte[][][] array) {
         int result = 1;
         for (int i = 0; i < array.length; i++) {
-            result = 31 * result + array[i];
+            result = 31 * result + deepHashCode(array[i]);
         }
         return result;
     }
@@ -134,16 +134,16 @@ public final class ByteUtils {
     }
 
     /**
-     * Computes a hashcode based on the contents of a three-dimensional byte
-     * array rather than its identity.
+     * Computes a hashcode based on the contents of a one-dimensional byte array
+     * rather than its identity.
      *
      * @param array the array to compute the hashcode of
      * @return the hashcode
      */
-    public static int deepHashCode(byte[][][] array) {
+    public static int deepHashCode(byte[] array) {
         int result = 1;
         for (int i = 0; i < array.length; i++) {
-            result = 31 * result + deepHashCode(array[i]);
+            result = 31 * result + array[i];
         }
         return result;
     }
@@ -281,7 +281,7 @@ public final class ByteUtils {
      *
      * @param x1 the first array
      * @param x2 the second array
-     * @return (x2||x1) (little-endian order, i.e. x1 is at lower memory
+     * @return (x2 | | x1) (little-endian order, i.e. x1 is at lower memory
      * addresses)
      */
     public static byte[] concatenate(byte[] x1, byte[] x2) {
@@ -339,6 +339,18 @@ public final class ByteUtils {
      *
      * @param input the input byte array
      * @param start the start index
+     * @return a subarray of <tt>input</tt>, ranging from <tt>start</tt> to
+     * the end of the array
+     */
+    public static byte[] subArray(byte[] input, int start) {
+        return subArray(input, start, input.length);
+    }
+
+    /**
+     * Generate a subarray of a given byte array.
+     *
+     * @param input the input byte array
+     * @param start the start index
      * @param end the end index
      * @return a subarray of <tt>input</tt>, ranging from <tt>start</tt>
      * (inclusively) to <tt>end</tt> (exclusively)
@@ -347,18 +359,6 @@ public final class ByteUtils {
         byte[] result = new byte[end - start];
         System.arraycopy(input, start, result, 0, end - start);
         return result;
-    }
-
-    /**
-     * Generate a subarray of a given byte array.
-     *
-     * @param input the input byte array
-     * @param start the start index
-     * @return a subarray of <tt>input</tt>, ranging from <tt>start</tt> to
-     * the end of the array
-     */
-    public static byte[] subArray(byte[] input, int start) {
-        return subArray(input, start, input.length);
     }
 
     /**

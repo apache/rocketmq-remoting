@@ -58,16 +58,16 @@ public class ResponseContext extends RequestContext {
         this.request = request;
     }
 
+    @Override
+    public String toString() {
+        return ToStringBuilder.reflectionToString(this, ToStringStyle.MULTI_LINE_STYLE);
+    }
+
     public RemotingCommand getResponse() {
         return response;
     }
 
     public void setResponse(RemotingCommand response) {
         this.response = response;
-    }
-
-    @Override
-    public String toString() {
-        return ToStringBuilder.reflectionToString(this, ToStringStyle.MULTI_LINE_STYLE);
     }
 }

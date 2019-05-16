@@ -55,21 +55,13 @@ public class UIDGenerator {
         counter = 0;
     }
 
-    public static UIDGenerator instance() {
-        return generatorLocal.get();
-    }
-
-    public String createUID() {
-        long current = System.currentTimeMillis();
-        if (current >= nextStartTime) {
-            setStartTime(current);
-        }
-        buffer.position(0);
-        sb.setLength(basePos);
-        buffer.putInt((int) (System.currentTimeMillis() - startTime));
-        buffer.putShort(counter++);
-        sb.append(ByteUtils.toHexString(buffer.array()));
-        return sb.toString();
+    public byte[] createFakeIP() {
+        ByteBuffer bb = ByteBuffer.allocate(8);
+        bb.putLong(System.currentTimeMillis());
+        bb.position(4);
+        byte[] fakeIP = new byte[4];
+        bb.get(fakeIP);
+        return fakeIP;
     }
 
     private void setStartTime(long millis) {
@@ -85,13 +77,21 @@ public class UIDGenerator {
         nextStartTime = cal.getTimeInMillis();
     }
 
-    public byte[] createFakeIP() {
-        ByteBuffer bb = ByteBuffer.allocate(8);
-        bb.putLong(System.currentTimeMillis());
-        bb.position(4);
-        byte[] fakeIP = new byte[4];
-        bb.get(fakeIP);
-        return fakeIP;
+    public static UIDGenerator instance() {
+        return generatorLocal.get();
+    }
+
+    public String createUID() {
+        long current = System.currentTimeMillis();
+        if (current >= nextStartTime) {
+            setStartTime(current);
+        }
+        buffer.position(0);
+        sb.setLength(basePos);
+        buffer.putInt((int) (System.currentTimeMillis() - startTime));
+        buffer.putShort(counter++);
+        sb.append(ByteUtils.toHexString(buffer.array()));
+        return sb.toString();
     }
 }
     
