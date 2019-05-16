@@ -68,7 +68,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
     private final Semaphore semaphoreOneway;
     private final Semaphore semaphoreAsync;
     private final Map<Integer, ResponseResult> ackTables = new ConcurrentHashMap<Integer, ResponseResult>(256);
-    private final Map<String, Pair<RequestProcessor, ExecutorService>> processorTables = new ConcurrentHashMap<String, Pair<RequestProcessor, ExecutorService>>();
+    private final Map<Short, Pair<RequestProcessor, ExecutorService>> processorTables = new ConcurrentHashMap<>();
     private final AtomicLong responseCounter = new AtomicLong(0);
     private final RemotingCommandFactory remotingCommandFactory;
     private final String remotingInstanceId = UIDGenerator.instance().createUID();
@@ -132,7 +132,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
     }
 
     public void processRequestCommand(final ChannelHandlerContext ctx, final RemotingCommand cmd) {
-        Pair<RequestProcessor, ExecutorService> processorExecutorPair = this.processorTables.get(cmd.opCode());
+        Pair<RequestProcessor, ExecutorService> processorExecutorPair = this.processorTables.get(cmd.cmdCode());
 
         RemotingChannel channel = new NettyChannelImpl(ctx.channel());
 
@@ -496,7 +496,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
     }
 
     @Override
-    public void registerRequestProcessor(String requestCode, RequestProcessor processor, ExecutorService executor) {
+    public void registerRequestProcessor(short requestCode, RequestProcessor processor, ExecutorService executor) {
         Pair<RequestProcessor, ExecutorService> pair = new Pair<RequestProcessor, ExecutorService>(processor, executor);
         if (!this.processorTables.containsKey(requestCode)) {
             this.processorTables.put(requestCode, pair);
@@ -504,12 +504,12 @@ public abstract class NettyRemotingAbstract implements RemotingService {
     }
 
     @Override
-    public void registerRequestProcessor(String requestCode, RequestProcessor processor) {
+    public void registerRequestProcessor(short requestCode, RequestProcessor processor) {
         this.registerRequestProcessor(requestCode, processor, publicExecutor);
     }
 
     @Override
-    public void unregisterRequestProcessor(String requestCode) {
+    public void unregisterRequestProcessor(short requestCode) {
         this.processorTables.remove(requestCode);
     }
 
@@ -529,7 +529,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
     }
 
     @Override
-    public Pair<RequestProcessor, ExecutorService> processor(String requestCode) {
+    public Pair<RequestProcessor, ExecutorService> processor(short requestCode) {
         return processorTables.get(requestCode);
     }
 
