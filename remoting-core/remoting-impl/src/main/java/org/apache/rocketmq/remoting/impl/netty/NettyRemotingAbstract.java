@@ -48,8 +48,6 @@ import org.apache.rocketmq.remoting.api.interceptor.Interceptor;
 import org.apache.rocketmq.remoting.api.interceptor.InterceptorGroup;
 import org.apache.rocketmq.remoting.api.interceptor.RequestContext;
 import org.apache.rocketmq.remoting.api.interceptor.ResponseContext;
-import org.apache.rocketmq.remoting.api.serializable.Serializer;
-import org.apache.rocketmq.remoting.api.serializable.SerializerFactory;
 import org.apache.rocketmq.remoting.common.ChannelEventListenerGroup;
 import org.apache.rocketmq.remoting.common.Pair;
 import org.apache.rocketmq.remoting.common.ResponseResult;
@@ -58,7 +56,7 @@ import org.apache.rocketmq.remoting.config.RemotingConfig;
 import org.apache.rocketmq.remoting.external.ThreadUtils;
 import org.apache.rocketmq.remoting.impl.channel.NettyChannelImpl;
 import org.apache.rocketmq.remoting.impl.command.RemotingCommandFactoryImpl;
-import org.apache.rocketmq.remoting.impl.protocol.serializer.SerializerFactoryImpl;
+import org.apache.rocketmq.remoting.impl.command.RemotingSysResponseCode;
 import org.apache.rocketmq.remoting.internal.UIDGenerator;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -66,7 +64,6 @@ import org.slf4j.LoggerFactory;
 
 public abstract class NettyRemotingAbstract implements RemotingService {
     protected static final Logger LOG = LoggerFactory.getLogger(NettyRemotingAbstract.class);
-    protected final SerializerFactory serializerFactory = new SerializerFactoryImpl();
     protected final ChannelEventExecutor channelEventExecutor = new ChannelEventExecutor("ChannelEventExecutor");
     private final Semaphore semaphoreOneway;
     private final Semaphore semaphoreAsync;
@@ -87,11 +84,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         this.publicExecutor = ThreadUtils.newFixedThreadPool(
             clientConfig.getClientAsyncCallbackExecutorThreads(),
             10000, "Remoting-PublicExecutor", true);
-        this.remotingCommandFactory = new RemotingCommandFactoryImpl(clientConfig.getSerializerName());
-    }
-
-    public SerializerFactory getSerializerFactory() {
-        return serializerFactory;
+        this.remotingCommandFactory = new RemotingCommandFactoryImpl();
     }
 
     protected void putNettyEvent(final NettyChannelEvent event) {
@@ -158,7 +151,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                     extractRemoteAddress(ctx.channel()), cmd, e, "FLOW_CONTROL"));
 
                 RemotingCommand response = remotingCommandFactory.createResponse(cmd);
-                response.opCode(RemotingCommand.CommandFlag.ERROR.flag());
+                response.opCode(RemotingSysResponseCode.SYSTEM_BUSY);
                 response.remark("SYSTEM_BUSY");
                 writeAndFlush(ctx.channel(), response);
             }
@@ -194,17 +187,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         if (cmd.trafficType() != TrafficType.REQUEST_ONEWAY) {
             //FiXME Exception interceptor can not throw exception
             interceptorGroup.onException(new ExceptionContext(RemotingEndPoint.RESPONSE, extractRemoteAddress(ctx.channel()), cmd, e, ""));
-            RemotingCommand response = remotingCommandFactory.createResponse(cmd);
-            response.opCode(RemotingCommand.CommandFlag.ERROR.flag());
-            response.remark(serializeException(cmd.serializerType(), e));
-            response.property("Exception", e.getClass().getName());
-            ctx.writeAndFlush(response);
         }
-    }
-
-    private String serializeException(byte serializeType, Throwable exception) {
-        final Serializer serialization = getSerializerFactory().get(serializeType);
-        return serialization.encode(exception).toString();
     }
 
     private void handleResponse(RemotingCommand response, RemotingCommand cmd, ChannelHandlerContext ctx) {
@@ -505,11 +488,6 @@ public abstract class NettyRemotingAbstract implements RemotingService {
 
     public String getRemotingInstanceId() {
         return remotingInstanceId;
-    }
-
-    @Override
-    public SerializerFactory serializerFactory() {
-        return this.serializerFactory;
     }
 
     @Override

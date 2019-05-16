@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-package org.apache.rocketmq.remoting.impl.protocol.compression;
+package org.apache.rocketmq.remoting.impl.compression;
 
-import org.apache.rocketmq.remoting.api.compressable.Compressor;
-import org.apache.rocketmq.remoting.api.compressable.CompressorFactory;
+import org.apache.rocketmq.remoting.api.compression.Compressor;
+import org.apache.rocketmq.remoting.api.compression.CompressorFactory;
 
 public class CompressorFactoryImpl implements CompressorFactory {
     private static final int MAX_COUNT = 0x0FF;

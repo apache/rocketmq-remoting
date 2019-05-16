@@ -22,7 +22,6 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
-import java.nio.ByteBuffer;
 import java.util.List;
 import org.apache.rocketmq.remoting.api.buffer.ByteBufferWrapper;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
@@ -55,13 +54,12 @@ public class Decoder extends ByteToMessageDecoder {
     private Object decode(final ChannelHandlerContext ctx, ByteBufferWrapper wrapper) throws Exception {
         int originReaderIndex = wrapper.readerIndex();
 
-        byte type = wrapper.readByte();
+        byte magic = wrapper.readByte();
         try {
-            RemotingCommand cmd = decode(wrapper, originReaderIndex);
-            if (cmd != null) {
-                cmd.protocolType(type);
+            if (magic != CodecHelper.PROTOCOL_MAGIC) {
+                throw new RemoteCodecException(String.format("MagicCode %d is wrong, expect %d", magic, CodecHelper.PROTOCOL_MAGIC));
             }
-            return cmd;
+            return decode(wrapper, originReaderIndex);
         } catch (final RemoteCodecException e) {
             LOG.warn("Decode error {}, close the channel {}", e.getMessage(), ctx.channel());
             ctx.channel().close().addListener(new ChannelFutureListener() {
@@ -76,7 +74,7 @@ public class Decoder extends ByteToMessageDecoder {
 
     public RemotingCommand decode(final ByteBufferWrapper wrapper, final int originReaderIndex) {
         // Full message isn't available yet, return nothing for now
-        if (wrapper.readableBytes() < CodecHelper.MIN_PROTOCOL_LEN - 1) {
+        if (wrapper.readableBytes() < CodecHelper.MIN_PROTOCOL_LEN - 1 /*MagicCode*/) {
             wrapper.setReaderIndex(originReaderIndex);
             return null;
         }
@@ -91,17 +89,10 @@ public class Decoder extends ByteToMessageDecoder {
             throw new IllegalArgumentException(String.format("Total length %d is more than limit %d", totalLength, CodecHelper.PACKET_MAX_LEN));
         }
 
-        if (wrapper.readableBytes() < totalLength) {
+        if (wrapper.readableBytes() < totalLength - 1 /*MagicCode*/ - 4 /*TotalLen*/) {
             wrapper.setReaderIndex(originReaderIndex);
             return null;
         }
-
-        ByteBuffer totalBuffer = ByteBuffer.allocate(totalLength);
-
-        wrapper.readBytes(totalBuffer);
-
-        totalBuffer.flip();
-
-        return CodecHelper.decode(totalBuffer);
+        return CodecHelper.decode(wrapper);
     }
 }

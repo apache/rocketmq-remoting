@@ -15,14 +15,17 @@
  * limitations under the License.
  */
 
-package org.apache.rocketmq.remoting.api.compressable;
+package org.apache.rocketmq.remoting.impl.command;
 
-public interface Compressor {
-    String name();
+public class RemotingSysResponseCode {
 
-    byte type();
+    public static final short SUCCESS = 0;
 
-    byte[] compress(final byte[] content) throws Exception;
+    public static final short SYSTEM_ERROR = 1;
 
-    byte[] deCompress(final byte[] content) throws Exception;
+    public static final short SYSTEM_BUSY = 2;
+
+    public static final short REQUEST_CODE_NOT_SUPPORTED = 3;
+
+    public static final short TRANSACTION_FAILED = 4;
 }

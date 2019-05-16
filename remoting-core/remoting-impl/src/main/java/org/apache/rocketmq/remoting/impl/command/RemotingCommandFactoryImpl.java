@@ -20,37 +20,23 @@ package org.apache.rocketmq.remoting.impl.command;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
 import org.apache.rocketmq.remoting.api.command.RemotingCommandFactory;
 import org.apache.rocketmq.remoting.api.command.TrafficType;
-import org.apache.rocketmq.remoting.api.serializable.SerializerFactory;
-import org.apache.rocketmq.remoting.impl.protocol.serializer.JsonSerializer;
-import org.apache.rocketmq.remoting.impl.protocol.serializer.SerializerFactoryImpl;
 
 public class RemotingCommandFactoryImpl implements RemotingCommandFactory {
-    private final SerializerFactory serializerFactory = new SerializerFactoryImpl();
-    private byte serializeType = JsonSerializer.SERIALIZER_TYPE;
-
-    private byte PROTOCOL_MAGIC = 0x14;
-
     public RemotingCommandFactoryImpl() {
-    }
-
-    public RemotingCommandFactoryImpl(final String serializeName) {
-        this.serializeType = serializerFactory.type(serializeName);
     }
 
     @Override
     public RemotingCommand createRequest() {
         RemotingCommand request = new RemotingCommandImpl();
-        request.protocolType(this.PROTOCOL_MAGIC);
-        request.serializerType(this.serializeType);
         return request;
     }
 
     @Override
-    public RemotingCommand createResponse(final RemotingCommand command) {
+    public RemotingCommand createResponse(final RemotingCommand request) {
         RemotingCommand response = new RemotingCommandImpl();
-        response.requestID(command.requestID());
-        response.protocolType(command.protocolType());
-        response.serializerType(command.serializerType());
+        response.cmdCode(request.cmdCode());
+        response.cmdVersion(request.cmdVersion());
+        response.requestID(request.requestID());
         response.trafficType(TrafficType.RESPONSE);
         return response;
     }

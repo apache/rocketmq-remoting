@@ -17,31 +17,28 @@
 
 package org.apache.rocketmq.remoting.api.command;
 
-import java.lang.reflect.Type;
 import java.util.Map;
-import org.apache.rocketmq.remoting.api.serializable.SerializerFactory;
-import org.apache.rocketmq.remoting.common.TypePresentation;
 
 public interface RemotingCommand {
-    byte protocolType();
+    short cmdCode();
 
-    void protocolType(byte value);
+    void cmdCode(short code);
+
+    short cmdVersion();
+
+    void cmdVersion(short version);
 
     int requestID();
 
     void requestID(int value);
 
-    byte serializerType();
-
-    void serializerType(byte value);
-
     TrafficType trafficType();
 
     void trafficType(TrafficType value);
 
-    String opCode();
+    short opCode();
 
-    void opCode(String value);
+    void opCode(short value);
 
     String remark();
 
@@ -55,36 +52,7 @@ public interface RemotingCommand {
 
     void property(String key, String value);
 
-    Object parameter();
+    byte[] payload();
 
-    void parameter(Object value);
-
-    byte[] parameterBytes();
-
-    void parameterBytes(byte[] value);
-
-    byte[] extraPayload();
-
-    void extraPayload(byte[] value);
-
-    <T> T parameter(final SerializerFactory serializerFactory, Class<T> c);
-
-    <T> T parameter(final SerializerFactory serializerFactory, final TypePresentation<T> typePresentation);
-
-    <T> T parameter(final SerializerFactory serializerFactory, final Type type);
-
-    enum CommandFlag {
-        SUCCESS("0"),
-        ERROR("-1");
-
-        private String flag;
-
-        CommandFlag(final String flag) {
-            this.flag = flag;
-        }
-
-        public String flag() {
-            return flag;
-        }
-    }
+    void payload(byte[] payload);
 }

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.rocketmq.remoting.api.compressable;
+package org.apache.rocketmq.remoting.api.compression;
 
 public interface CompressorFactory {
     void register(Compressor compressor);

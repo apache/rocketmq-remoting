@@ -17,7 +17,6 @@
 
 package org.apache.rocketmq.remoting.impl.command;
 
-import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.commons.lang3.builder.EqualsBuilder;
@@ -26,36 +25,20 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
 import org.apache.rocketmq.remoting.api.command.TrafficType;
-import org.apache.rocketmq.remoting.api.serializable.SerializerFactory;
-import org.apache.rocketmq.remoting.common.TypePresentation;
 
 public class RemotingCommandImpl implements RemotingCommand {
     public final static RequestIdGenerator REQUEST_ID_GENERATOR = RequestIdGenerator.inst;
 
-    private byte protocolType;
-    private byte serializeType;
-
+    private short cmdCode;
+    private short cmdVersion;
     private volatile int requestId = REQUEST_ID_GENERATOR.incrementAndGet();
     private TrafficType trafficType = TrafficType.REQUEST_SYNC;
-    private String code = CommandFlag.SUCCESS.flag();
+    private short opCode = RemotingSysResponseCode.SUCCESS;
     private String remark = "";
-    private Map<String, String> properties = new HashMap<String, String>();
-    private Object parameter;
-    private byte[] extraPayload;
-
-    private byte[] parameterByte;
+    private Map<String, String> properties = new HashMap<>();
+    private byte[] payload;
 
     protected RemotingCommandImpl() {
-    }
-
-    @Override
-    public byte protocolType() {
-        return this.protocolType;
-    }
-
-    @Override
-    public void protocolType(byte value) {
-        this.protocolType = value;
     }
 
     @Override
@@ -69,16 +52,6 @@ public class RemotingCommandImpl implements RemotingCommand {
     }
 
     @Override
-    public byte serializerType() {
-        return this.serializeType;
-    }
-
-    @Override
-    public void serializerType(byte value) {
-        this.serializeType = value;
-    }
-
-    @Override
     public TrafficType trafficType() {
         return this.trafficType;
     }
@@ -89,13 +62,13 @@ public class RemotingCommandImpl implements RemotingCommand {
     }
 
     @Override
-    public String opCode() {
-        return this.code;
+    public short opCode() {
+        return this.opCode;
     }
 
     @Override
-    public void opCode(String value) {
-        this.code = value;
+    public void opCode(short value) {
+        this.opCode = value;
     }
 
     @Override
@@ -129,68 +102,33 @@ public class RemotingCommandImpl implements RemotingCommand {
     }
 
     @Override
-    public Object parameter() {
-        return this.parameter;
+    public short cmdCode() {
+        return this.cmdCode;
     }
 
     @Override
-    public void parameter(Object value) {
-        this.parameter = value;
+    public void cmdCode(short code) {
+        this.cmdCode = code;
     }
 
     @Override
-    public byte[] parameterBytes() {
-        return this.getParameterByte();
-    }
-
-    public byte[] getParameterByte() {
-        return parameterByte;
-    }
-
-    public void setParameterByte(byte[] parameterByte) {
-        this.parameterByte = parameterByte;
+    public short cmdVersion() {
+        return this.cmdVersion;
     }
 
     @Override
-    public void parameterBytes(byte[] value) {
-        this.setParameterByte(value);
+    public void cmdVersion(short version) {
+        this.cmdVersion = version;
     }
 
     @Override
-    public byte[] extraPayload() {
-        return this.extraPayload;
+    public byte[] payload() {
+        return this.payload;
     }
 
     @Override
-    public void extraPayload(byte[] value) {
-        this.extraPayload = value;
-    }
-
-    @Override
-    public <T> T parameter(SerializerFactory serializerFactory, Class<T> c) {
-        if (this.parameter() != null)
-            return (T) this.parameter();
-        final T decode = serializerFactory.get(this.serializerType()).decode(this.parameterBytes(), c);
-        this.parameter(decode);
-        return decode;
-    }
-
-    @Override
-    public <T> T parameter(SerializerFactory serializerFactory, TypePresentation<T> typePresentation) {
-        if (this.parameter() != null)
-            return (T) this.parameter();
-        final T decode = serializerFactory.get(this.serializerType()).decode(this.parameterBytes(), typePresentation);
-        this.parameter(decode);
-        return decode;
-    }
-
-    @Override
-    public <T> T parameter(SerializerFactory serializerFactory, Type type) {
-        if (this.parameter() != null)
-            return (T) this.parameter();
-        final T decode = serializerFactory.get(this.serializerType()).decode(this.parameterBytes(), type);
-        this.parameter(decode);
-        return decode;
+    public void payload(byte[] payload) {
+        this.payload = payload;
     }
 
     @Override

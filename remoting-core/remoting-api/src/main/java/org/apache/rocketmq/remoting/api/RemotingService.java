@@ -22,7 +22,7 @@ import org.apache.rocketmq.remoting.api.command.RemotingCommandFactory;
 import org.apache.rocketmq.remoting.api.interceptor.Interceptor;
 import org.apache.rocketmq.remoting.common.Pair;
 
-public interface RemotingService extends RemotingMarshaller, ConnectionService, ObjectLifecycle {
+public interface RemotingService extends ConnectionService, ObjectLifecycle {
     void registerInterceptor(Interceptor interceptor);
 
     void registerRequestProcessor(final String requestCode, final RequestProcessor processor,

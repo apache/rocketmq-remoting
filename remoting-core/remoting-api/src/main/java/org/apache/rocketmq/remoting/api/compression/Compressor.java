@@ -15,10 +15,14 @@
  * limitations under the License.
  */
 
-package org.apache.rocketmq.remoting.api;
+package org.apache.rocketmq.remoting.api.compression;
 
-import org.apache.rocketmq.remoting.api.serializable.SerializerFactory;
+public interface Compressor {
+    String name();
 
-public interface RemotingMarshaller {
-    SerializerFactory serializerFactory();
+    byte type();
+
+    byte[] compress(final byte[] content) throws Exception;
+
+    byte[] deCompress(final byte[] content) throws Exception;
 }
