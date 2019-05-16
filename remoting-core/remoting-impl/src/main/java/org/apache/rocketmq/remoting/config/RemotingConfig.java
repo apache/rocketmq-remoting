@@ -19,7 +19,6 @@ package org.apache.rocketmq.remoting.config;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
-import org.apache.rocketmq.remoting.impl.compression.GZipCompressor;
 
 public class RemotingConfig extends TcpSocketConfig {
     private int connectionMaxRetries = 3;
@@ -36,7 +35,6 @@ public class RemotingConfig extends TcpSocketConfig {
     private int threadTaskLowWaterMark = 30000;
     private int threadTaskHighWaterMark = 50000;
     private int connectionRetryBackoffMillis = 3000;
-    private String compressorName = GZipCompressor.COMPRESSOR_NAME;
     private int serviceThreadBlockQueueSize = 50000;
     private boolean clientNativeEpollEnable = false;
     private int clientWorkerThreads = 16 + Runtime.getRuntime().availableProcessors() * 2;
@@ -143,14 +141,6 @@ public class RemotingConfig extends TcpSocketConfig {
 
     public void setConnectionRetryBackoffMillis(final int connectionRetryBackoffMillis) {
         this.connectionRetryBackoffMillis = connectionRetryBackoffMillis;
-    }
-
-    public String getCompressorName() {
-        return compressorName;
-    }
-
-    public void setCompressorName(final String compressorName) {
-        this.compressorName = compressorName;
     }
 
     public int getServiceThreadBlockQueueSize() {
