@@ -24,6 +24,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -32,7 +33,6 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.rocketmq.remoting.api.AsyncHandler;
 import org.apache.rocketmq.remoting.api.RemotingEndPoint;
 import org.apache.rocketmq.remoting.api.RemotingService;
@@ -42,6 +42,7 @@ import org.apache.rocketmq.remoting.api.channel.RemotingChannel;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
 import org.apache.rocketmq.remoting.api.command.RemotingCommandFactory;
 import org.apache.rocketmq.remoting.api.command.TrafficType;
+import org.apache.rocketmq.remoting.api.exception.RemoteAccessException;
 import org.apache.rocketmq.remoting.api.exception.RemoteTimeoutException;
 import org.apache.rocketmq.remoting.api.interceptor.ExceptionContext;
 import org.apache.rocketmq.remoting.api.interceptor.Interceptor;
@@ -69,7 +70,6 @@ public abstract class NettyRemotingAbstract implements RemotingService {
     private final Semaphore semaphoreAsync;
     private final Map<Integer, ResponseResult> ackTables = new ConcurrentHashMap<Integer, ResponseResult>(256);
     private final Map<Short, Pair<RequestProcessor, ExecutorService>> processorTables = new ConcurrentHashMap<>();
-    private final AtomicLong responseCounter = new AtomicLong(0);
     private final RemotingCommandFactory remotingCommandFactory;
     private final String remotingInstanceId = UIDGenerator.instance().createUID();
 
@@ -101,7 +101,6 @@ public abstract class NettyRemotingAbstract implements RemotingService {
     }
 
     void scanResponseTable() {
-        /*
         Iterator<Map.Entry<Integer, ResponseResult>> iterator = this.ackTables.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<Integer, ResponseResult> next = iterator.next();
@@ -113,7 +112,6 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                     long timeoutMillis = result.getTimeoutMillis();
                     long costTimeMillis = System.currentTimeMillis() - result.getBeginTimestamp();
                     result.onTimeout(timeoutMillis, costTimeMillis);
-                    LOG.error("scan response table command {} failed", result.getRequestId());
                 } catch (Throwable e) {
                     LOG.warn("Error occurred when execute timeout callback !", e);
                 } finally {
@@ -122,7 +120,6 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                 }
             }
         }
-        */
     }
 
     @Override
@@ -166,10 +163,8 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         try {
             processorExecutorPair.getRight().submit(run);
         } catch (RejectedExecutionException e) {
-            if ((System.currentTimeMillis() % 10000) == 0) {
-                LOG.warn(String.format("Request %s from %s Rejected by server executor %s !", cmd,
-                    extractRemoteAddress(ctx.channel()), processorExecutorPair.getRight().toString()));
-            }
+            LOG.warn(String.format("Request %s from %s Rejected by server executor %s !", cmd,
+                extractRemoteAddress(ctx.channel()), processorExecutorPair.getRight().toString()));
 
             if (cmd.trafficType() != TrafficType.REQUEST_ONEWAY) {
                 interceptorGroup.onException(new ExceptionContext(RemotingEndPoint.RESPONSE,
@@ -189,12 +184,8 @@ public abstract class NettyRemotingAbstract implements RemotingService {
             responseResult.setResponseCommand(cmd);
             responseResult.release();
 
-            long time = System.currentTimeMillis();
             ackTables.remove(cmd.requestID());
-            if (responseCounter.incrementAndGet() % 5000 == 0) {
-                LOG.info("REQUEST ID:{}, cost time:{}, ackTables.size:{}", cmd.requestID(), time - responseResult.getBeginTimestamp(),
-                    ackTables.size());
-            }
+
             if (responseResult.getAsyncHandler() != null) {
                 boolean sameThread = false;
                 ExecutorService executor = this.getCallbackExecutor();
@@ -346,10 +337,9 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                 if (responseResult.isSendRequestOK()) {
                     throw new RemoteTimeoutException(extractRemoteAddress(channel), timeoutMillis, responseResult.getCause());
                 }
-                /*
                 else {
                     throw new RemoteAccessException(extractRemoteAddress(channel), responseResult.getCause());
-                }*/
+                }
             }
 
             return responseCommand;
@@ -546,7 +536,6 @@ public abstract class NettyRemotingAbstract implements RemotingService {
             super(nettyEventExector);
             this.name = nettyEventExector;
         }
-        //private final AtomicBoolean isStopped = new AtomicBoolean(true);
 
         public void putNettyEvent(final NettyChannelEvent event) {
             if (this.eventQueue.size() <= MAX_SIZE) {

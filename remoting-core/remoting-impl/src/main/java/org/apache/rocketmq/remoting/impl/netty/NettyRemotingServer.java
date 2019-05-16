@@ -160,7 +160,6 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
     @Override
     public void stop() {
         try {
-
             ThreadUtils.shutdownGracefully(houseKeepingService, 3000, TimeUnit.MILLISECONDS);
 
             ThreadUtils.shutdownGracefully(channelEventExecutor);
@@ -171,7 +170,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
 
             this.workerGroup.shutdownGracefully().syncUninterruptibly();
         } catch (Exception e) {
-            LOG.error("RemotingServer stopped error !", e);
+            LOG.warn("RemotingServer stopped error !", e);
         }
 
         super.stop();

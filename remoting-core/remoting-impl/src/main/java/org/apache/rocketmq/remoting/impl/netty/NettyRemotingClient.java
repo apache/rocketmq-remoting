@@ -96,9 +96,14 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
             .handler(new ChannelInitializer<SocketChannel>() {
                 @Override
                 public void initChannel(SocketChannel ch) throws Exception {
-                    ch.pipeline().addLast(workerGroup, new Decoder(), new Encoder(), new IdleStateHandler(clientConfig.getConnectionChannelReaderIdleSeconds(),
+                    ch.pipeline().addLast(workerGroup,
+                        new Decoder(),
+                        new Encoder(),
+                        new IdleStateHandler(clientConfig.getConnectionChannelReaderIdleSeconds(),
                             clientConfig.getConnectionChannelWriterIdleSeconds(), clientConfig.getConnectionChannelIdleSeconds()),
-                        new ClientConnectionHandler(), new EventDispatcher(), new ExceptionHandler());
+                        new ClientConnectionHandler(),
+                        new EventDispatcher(),
+                        new ExceptionHandler());
                 }
             });
 
@@ -131,25 +136,23 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
 
     @Override
     public void stop() {
-        // try {
-        ThreadUtils.shutdownGracefully(houseKeepingService, 3000, TimeUnit.MILLISECONDS);
+        try {
+            ThreadUtils.shutdownGracefully(houseKeepingService, 3000, TimeUnit.MILLISECONDS);
 
-        for (ChannelWrapper cw : this.channelTables.values()) {
-            this.closeChannel(null, cw.getChannel());
-        }
+            for (ChannelWrapper cw : this.channelTables.values()) {
+                this.closeChannel(null, cw.getChannel());
+            }
 
-        this.channelTables.clear();
+            this.channelTables.clear();
 
-        this.ioGroup.shutdownGracefully();
+            this.ioGroup.shutdownGracefully();
 
-        ThreadUtils.shutdownGracefully(channelEventExecutor);
+            ThreadUtils.shutdownGracefully(channelEventExecutor);
 
-        this.workerGroup.shutdownGracefully();
-        /*
+            this.workerGroup.shutdownGracefully();
         } catch (Exception e) {
-            LOG.error("RemotingClient stopped error !", e);
+            LOG.warn("RemotingClient stopped error !", e);
         }
-        */
 
         super.stop();
     }
@@ -263,11 +266,9 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
                 LOG.warn("invoke: wait response timeout<{}ms> exception, so close the channel[{}]", timeoutMillis, address);
                 throw e;
             } finally {
-                /*
                 if (this.clientConfig.isClientShortConnectionEnable()) {
-                    this.closeChannel(addr, channel);
+                    this.closeChannel(address, channel);
                 }
-                */
             }
         } else {
             this.closeChannel(address, channel);

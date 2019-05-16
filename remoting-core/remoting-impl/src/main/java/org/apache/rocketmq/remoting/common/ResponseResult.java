@@ -91,7 +91,7 @@ public class ResponseResult {
             try {
                 interceptorGroup.onException(new ExceptionContext(RemotingEndPoint.REQUEST, this.remoteAddr, this.requestCommand,
                     null, "CALLBACK_TIMEOUT"));
-            } catch (Throwable e) {
+            } catch (Throwable ignore) {
             }
             if (null != asyncHandler) {
                 asyncHandler.onTimeout(costTimeMillis, timoutMillis);
