@@ -168,8 +168,7 @@ public final class ThreadUtils {
         executor.shutdown();
         try {
             // Wait a while for existing tasks to terminate.
-            if (!executor
-                .awaitTermination(timeout, timeUnit)) {
+            if (!executor.awaitTermination(timeout, timeUnit)) {
                 executor.shutdownNow();
                 // Wait a while for tasks to respond to being cancelled.
                 if (!executor.awaitTermination(timeout, timeUnit)) {

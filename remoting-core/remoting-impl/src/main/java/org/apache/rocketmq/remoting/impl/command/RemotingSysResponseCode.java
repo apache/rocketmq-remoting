@@ -26,6 +26,4 @@ public class RemotingSysResponseCode {
     public static final short SYSTEM_BUSY = 2;
 
     public static final short REQUEST_CODE_NOT_SUPPORTED = 3;
-
-    public static final short TRANSACTION_FAILED = 4;
 }

@@ -33,8 +33,4 @@ public class SemaphoreReleaseOnlyOnce {
             this.semaphore.release();
         }
     }
-
-    public Semaphore getSemaphore() {
-        return semaphore;
-    }
 }

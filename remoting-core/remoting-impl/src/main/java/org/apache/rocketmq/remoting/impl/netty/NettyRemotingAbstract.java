@@ -147,7 +147,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                     processResponseCommand(ctx, command);
                     break;
                 default:
-                    LOG.warn("Not supported The traffic type {} !", command.trafficType());
+                    LOG.warn("The traffic type {} is NOT supported!", command.trafficType());
                     break;
             }
         }
@@ -155,6 +155,14 @@ public abstract class NettyRemotingAbstract implements RemotingService {
 
     public void processRequestCommand(final ChannelHandlerContext ctx, final RemotingCommand cmd) {
         Pair<RequestProcessor, ExecutorService> processorExecutorPair = this.processorTables.get(cmd.cmdCode());
+
+        if (processorExecutorPair == null) {
+            final RemotingCommand response = commandFactory().createResponse(cmd);
+            response.opCode(RemotingSysResponseCode.REQUEST_CODE_NOT_SUPPORTED);
+            ctx.writeAndFlush(response);
+            LOG.warn("The command code {} is NOT supported!", cmd.cmdCode());
+            return;
+        }
 
         RemotingChannel channel = new NettyChannelImpl(ctx.channel());
 

@@ -42,7 +42,6 @@ public class ResponseFuture {
     private SemaphoreReleaseOnlyOnce once;
 
     private RemotingCommand requestCommand;
-    private InterceptorGroup interceptorGroup;
     private String remoteAddr;
 
     public ResponseFuture(int requestId, long timeoutMillis, AsyncHandler asyncHandler,
@@ -137,14 +136,6 @@ public class ResponseFuture {
 
     public void setRequestCommand(RemotingCommand requestCommand) {
         this.requestCommand = requestCommand;
-    }
-
-    public InterceptorGroup getInterceptorGroup() {
-        return interceptorGroup;
-    }
-
-    public void setInterceptorGroup(InterceptorGroup interceptorGroup) {
-        this.interceptorGroup = interceptorGroup;
     }
 
     public String getRemoteAddr() {
