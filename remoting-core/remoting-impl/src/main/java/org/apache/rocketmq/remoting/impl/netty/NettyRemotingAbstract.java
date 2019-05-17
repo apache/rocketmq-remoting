@@ -24,7 +24,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -44,14 +45,13 @@ import org.apache.rocketmq.remoting.api.command.RemotingCommandFactory;
 import org.apache.rocketmq.remoting.api.command.TrafficType;
 import org.apache.rocketmq.remoting.api.exception.RemoteAccessException;
 import org.apache.rocketmq.remoting.api.exception.RemoteTimeoutException;
-import org.apache.rocketmq.remoting.api.interceptor.ExceptionContext;
 import org.apache.rocketmq.remoting.api.interceptor.Interceptor;
 import org.apache.rocketmq.remoting.api.interceptor.InterceptorGroup;
 import org.apache.rocketmq.remoting.api.interceptor.RequestContext;
 import org.apache.rocketmq.remoting.api.interceptor.ResponseContext;
 import org.apache.rocketmq.remoting.common.ChannelEventListenerGroup;
 import org.apache.rocketmq.remoting.common.Pair;
-import org.apache.rocketmq.remoting.common.ResponseResult;
+import org.apache.rocketmq.remoting.common.ResponseFuture;
 import org.apache.rocketmq.remoting.common.SemaphoreReleaseOnlyOnce;
 import org.apache.rocketmq.remoting.config.RemotingConfig;
 import org.apache.rocketmq.remoting.external.ThreadUtils;
@@ -68,7 +68,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
     protected final ChannelEventExecutor channelEventExecutor = new ChannelEventExecutor("ChannelEventExecutor");
     private final Semaphore semaphoreOneway;
     private final Semaphore semaphoreAsync;
-    private final Map<Integer, ResponseResult> ackTables = new ConcurrentHashMap<Integer, ResponseResult>(256);
+    private final Map<Integer, ResponseFuture> ackTables = new ConcurrentHashMap<Integer, ResponseFuture>(256);
     private final Map<Short, Pair<RequestProcessor, ExecutorService>> processorTables = new ConcurrentHashMap<>();
     private final RemotingCommandFactory remotingCommandFactory;
     private final String remotingInstanceId = UIDGenerator.instance().createUID();
@@ -101,23 +101,23 @@ public abstract class NettyRemotingAbstract implements RemotingService {
     }
 
     void scanResponseTable() {
-        Iterator<Map.Entry<Integer, ResponseResult>> iterator = this.ackTables.entrySet().iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<Integer, ResponseResult> next = iterator.next();
-            ResponseResult result = next.getValue();
+        final List<Integer> rList = new ArrayList<>();
 
-            if ((result.getBeginTimestamp() + result.getTimeoutMillis()) <= System.currentTimeMillis()) {
-                iterator.remove();
-                try {
-                    long timeoutMillis = result.getTimeoutMillis();
-                    long costTimeMillis = System.currentTimeMillis() - result.getBeginTimestamp();
-                    result.onTimeout(timeoutMillis, costTimeMillis);
-                } catch (Throwable e) {
-                    LOG.warn("Error occurred when execute timeout callback !", e);
-                } finally {
-                    result.release();
-                    LOG.warn("Removed timeout request {} ", result);
-                }
+        for (final Map.Entry<Integer, ResponseFuture> next : this.ackTables.entrySet()) {
+            ResponseFuture responseFuture = next.getValue();
+
+            if ((responseFuture.getBeginTimestamp() + responseFuture.getTimeoutMillis()) <= System.currentTimeMillis()) {
+                rList.add(responseFuture.getRequestId());
+            }
+        }
+
+        for (Integer requestID: rList) {
+            ResponseFuture rf = this.ackTables.remove(requestID);
+
+            if (rf != null) {
+                LOG.warn("remove timeout request {} ", rf);
+                rf.setCause(new RemoteTimeoutException(rf.getRemoteAddr(), rf.getTimeoutMillis()));
+                executeAsyncHandler(rf);
             }
         }
     }
@@ -167,9 +167,6 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                 extractRemoteAddress(ctx.channel()), processorExecutorPair.getRight().toString()));
 
             if (cmd.trafficType() != TrafficType.REQUEST_ONEWAY) {
-                interceptorGroup.onException(new ExceptionContext(RemotingEndPoint.RESPONSE,
-                    extractRemoteAddress(ctx.channel()), cmd, e, "FLOW_CONTROL"));
-
                 RemotingCommand response = remotingCommandFactory.createResponse(cmd);
                 response.opCode(RemotingSysResponseCode.SYSTEM_BUSY);
                 response.remark("SYSTEM_BUSY");
@@ -178,49 +175,23 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         }
     }
 
-    private void processResponseCommand(ChannelHandlerContext ctx, RemotingCommand cmd) {
-        final ResponseResult responseResult = ackTables.get(cmd.requestID());
-        if (responseResult != null) {
-            responseResult.setResponseCommand(cmd);
-            responseResult.release();
+    private void processResponseCommand(ChannelHandlerContext ctx, RemotingCommand response) {
+        final ResponseFuture responseFuture = ackTables.remove(response.requestID());
+        if (responseFuture != null) {
+            responseFuture.setResponseCommand(response);
+            responseFuture.release();
 
-            ackTables.remove(cmd.requestID());
+            this.interceptorGroup.afterResponseReceived(new ResponseContext(RemotingEndPoint.REQUEST,
+                extractRemoteAddress(ctx.channel()), responseFuture.getRequestCommand(), response));
 
-            if (responseResult.getAsyncHandler() != null) {
-                boolean sameThread = false;
-                ExecutorService executor = this.getCallbackExecutor();
-                if (executor != null) {
-                    try {
-                        executor.submit(new Runnable() {
-                            @Override
-                            public void run() {
-                                try {
-                                    responseResult.executeCallbackArrived(responseResult.getResponseCommand());
-                                } catch (Throwable e) {
-                                    LOG.warn("Execute callback error !", e);
-                                }
-                            }
-                        });
-                    } catch (RejectedExecutionException e) {
-                        sameThread = true;
-                        LOG.warn("Execute submit error !", e);
-                    }
-                } else {
-                    sameThread = true;
-                }
-
-                if (sameThread) {
-                    try {
-                        responseResult.executeCallbackArrived(responseResult.getResponseCommand());
-                    } catch (Throwable e) {
-                        LOG.warn("Execute callback in response thread error !", e);
-                    }
-                }
+            if (responseFuture.getAsyncHandler() != null) {
+                executeAsyncHandler(responseFuture);
             } else {
-                responseResult.putResponse(cmd);
+                responseFuture.putResponse(response);
+                responseFuture.release();
             }
         } else {
-            LOG.warn("request {} from {} has not matched response !", cmd, extractRemoteAddress(ctx.channel()));
+            LOG.warn("request {} from {} has not matched response !", response, extractRemoteAddress(ctx.channel()));
         }
     }
 
@@ -261,6 +232,60 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         return this.publicExecutor;
     }
 
+    /**
+     * Execute callback in callback executor. If callback executor is null, run directly in current thread
+     */
+    private void executeAsyncHandler(final ResponseFuture responseFuture) {
+        boolean runInThisThread = false;
+        ExecutorService executor = this.getCallbackExecutor();
+        if (executor != null) {
+            try {
+                executor.submit(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            responseFuture.executeAsyncHandler();
+                        } catch (Throwable e) {
+                            LOG.warn("execute callback in executor exception, and callback throw", e);
+                        } finally {
+                            responseFuture.release();
+                        }
+                    }
+                });
+            } catch (Throwable e) {
+                runInThisThread = true;
+                LOG.warn("execute callback in executor exception, maybe executor busy", e);
+            }
+        } else {
+            runInThisThread = true;
+        }
+
+        if (runInThisThread) {
+            try {
+                responseFuture.executeAsyncHandler();
+            } catch (Throwable e) {
+                LOG.warn("executeInvokeCallback Exception", e);
+            } finally {
+                responseFuture.release();
+            }
+        }
+    }
+
+    private void requestFail(final int requestID, final Throwable cause) {
+        ResponseFuture responseFuture = ackTables.remove(requestID);
+        if (responseFuture != null) {
+            responseFuture.setSendRequestOK(false);
+            responseFuture.putResponse(null);
+            responseFuture.setCause(cause);
+            executeAsyncHandler(responseFuture);
+        }
+    }
+
+    private void requestFail(final ResponseFuture responseFuture, final Throwable cause) {
+        responseFuture.setCause(cause);
+        executeAsyncHandler(responseFuture);
+    }
+
     private void handleResponse(RemotingCommand response, RemotingCommand cmd, ChannelHandlerContext ctx) {
         if (cmd.trafficType() != TrafficType.REQUEST_ONEWAY) {
             if (response != null) {
@@ -277,8 +302,10 @@ public abstract class NettyRemotingAbstract implements RemotingService {
 
     private void handleException(Throwable e, RemotingCommand cmd, ChannelHandlerContext ctx) {
         if (cmd.trafficType() != TrafficType.REQUEST_ONEWAY) {
-            //FiXME Exception interceptor can not throw exception
-            interceptorGroup.onException(new ExceptionContext(RemotingEndPoint.RESPONSE, extractRemoteAddress(ctx.channel()), cmd, e, ""));
+            RemotingCommand response = remotingCommandFactory.createResponse(cmd);
+            response.opCode(RemotingSysResponseCode.SYSTEM_ERROR);
+            response.remark("SYSTEM_ERROR");
+            writeAndFlush(ctx.channel(), response);
         }
     }
 
@@ -288,7 +315,6 @@ public abstract class NettyRemotingAbstract implements RemotingService {
 
         final String remoteAddr = extractRemoteAddress(channel);
 
-        //FIXME try catch here
         this.interceptorGroup.beforeRequest(new RequestContext(RemotingEndPoint.REQUEST, remoteAddr, request));
 
         RemotingCommand responseCommand = this.invoke0(remoteAddr, channel, request, timeoutMillis);
@@ -302,27 +328,25 @@ public abstract class NettyRemotingAbstract implements RemotingService {
     private RemotingCommand invoke0(final String remoteAddr, final Channel channel, final RemotingCommand request,
         final long timeoutMillis) {
         try {
-            final int opaque = request.requestID();
-            final ResponseResult responseResult = new ResponseResult(opaque, timeoutMillis);
-            responseResult.setRequestCommand(request);
-            //FIXME one interceptor for all case ?
-            responseResult.setInterceptorGroup(this.interceptorGroup);
-            responseResult.setRemoteAddr(remoteAddr);
+            final int requestID = request.requestID();
+            final ResponseFuture responseFuture = new ResponseFuture(requestID, timeoutMillis);
+            responseFuture.setRequestCommand(request);
+            responseFuture.setRemoteAddr(remoteAddr);
 
-            this.ackTables.put(opaque, responseResult);
+            this.ackTables.put(requestID, responseFuture);
 
             ChannelFutureListener listener = new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture f) throws Exception {
                     if (f.isSuccess()) {
-                        responseResult.setSendRequestOK(true);
+                        responseFuture.setSendRequestOK(true);
                         return;
                     } else {
-                        responseResult.setSendRequestOK(false);
+                        responseFuture.setSendRequestOK(false);
 
-                        ackTables.remove(opaque);
-                        responseResult.setCause(f.cause());
-                        responseResult.putResponse(null);
+                        ackTables.remove(requestID);
+                        responseFuture.setCause(f.cause());
+                        responseFuture.putResponse(null);
 
                         LOG.warn("Send request command to {} failed !", remoteAddr);
                     }
@@ -331,14 +355,14 @@ public abstract class NettyRemotingAbstract implements RemotingService {
 
             this.writeAndFlush(channel, request, listener);
 
-            RemotingCommand responseCommand = responseResult.waitResponse(timeoutMillis);
+            RemotingCommand responseCommand = responseFuture.waitResponse(timeoutMillis);
 
             if (null == responseCommand) {
-                if (responseResult.isSendRequestOK()) {
-                    throw new RemoteTimeoutException(extractRemoteAddress(channel), timeoutMillis, responseResult.getCause());
+                if (responseFuture.isSendRequestOK()) {
+                    throw new RemoteTimeoutException(extractRemoteAddress(channel), timeoutMillis, responseFuture.getCause());
                 }
                 else {
-                    throw new RemoteAccessException(extractRemoteAddress(channel), responseResult.getCause());
+                    throw new RemoteAccessException(extractRemoteAddress(channel), responseFuture.getCause());
                 }
             }
 
@@ -360,98 +384,57 @@ public abstract class NettyRemotingAbstract implements RemotingService {
 
         this.interceptorGroup.beforeRequest(new RequestContext(RemotingEndPoint.REQUEST, remoteAddr, request));
 
-        Exception exception = null;
-
-        try {
-            this.invokeAsync0(remoteAddr, channel, request, timeoutMillis, invokeCallback);
-        } catch (InterruptedException e) {
-            exception = e;
-        } finally {
-            if (null != exception) {
-                try {
-                    this.interceptorGroup.onException(new ExceptionContext(RemotingEndPoint.REQUEST, extractRemoteAddress(channel), request, exception, "REMOTING_EXCEPTION"));
-                } catch (Throwable e) {
-                    LOG.warn("onException ", e);
-                }
-            }
-        }
+        this.invokeAsync0(remoteAddr, channel, request, invokeCallback, timeoutMillis);
     }
 
     private void invokeAsync0(final String remoteAddr, final Channel channel, final RemotingCommand request,
-        final long timeoutMillis, final AsyncHandler invokeCallback) throws InterruptedException {
-        boolean acquired = this.semaphoreAsync.tryAcquire(timeoutMillis, TimeUnit.MILLISECONDS);
+        final AsyncHandler asyncHandler, final long timeoutMillis) {
+        boolean acquired = this.semaphoreAsync.tryAcquire();
         if (acquired) {
             final int requestID = request.requestID();
 
             SemaphoreReleaseOnlyOnce once = new SemaphoreReleaseOnlyOnce(this.semaphoreAsync);
 
-            final ResponseResult responseResult = new ResponseResult(request.requestID(), timeoutMillis, invokeCallback, once);
-            responseResult.setRequestCommand(request);
-            responseResult.setInterceptorGroup(this.interceptorGroup);
-            responseResult.setRemoteAddr(remoteAddr);
+            final ResponseFuture responseFuture = new ResponseFuture(requestID, timeoutMillis, asyncHandler, once);
+            responseFuture.setRequestCommand(request);
+            responseFuture.setRemoteAddr(remoteAddr);
 
-            this.ackTables.put(request.requestID(), responseResult);
+            this.ackTables.put(requestID, responseFuture);
             try {
                 ChannelFutureListener listener = new ChannelFutureListener() {
                     @Override
-                    public void operationComplete(ChannelFuture f) throws Exception {
-                        responseResult.setSendRequestOK(f.isSuccess());
+                    public void operationComplete(ChannelFuture f) {
+                        responseFuture.setSendRequestOK(f.isSuccess());
                         if (f.isSuccess()) {
                             return;
                         }
 
-                        responseResult.putResponse(null);
-                        ackTables.remove(requestID);
-                        try {
-                            responseResult.executeRequestSendFailed();
-                        } catch (Throwable e) {
-                            LOG.warn("Execute callback error !", e);
-                        } finally {
-                            responseResult.release();
-                        }
-
+                        requestFail(requestID, f.cause());
                         LOG.warn("Send request command to channel  failed.", remoteAddr);
                     }
                 };
 
                 this.writeAndFlush(channel, request, listener);
             } catch (Exception e) {
-                responseResult.release();
+                requestFail(requestID, e);
                 LOG.error("Send request command to channel " + channel + " error !", e);
             }
         } else {
-            String info = String.format("Semaphore tryAcquire %d ms timeout for request %s ,waiting thread nums: %d,availablePermits: %d",
-                timeoutMillis, request.toString(), semaphoreAsync.getQueueLength(), this.semaphoreAsync.availablePermits());
+            String info = String.format("No available async semaphore to issue the request request %s", request.toString());
+            requestFail(new ResponseFuture(request.requestID(), timeoutMillis, asyncHandler, null), new RemoteAccessException(info));
             LOG.error(info);
-            throw new RemoteTimeoutException(info);
         }
     }
 
-    public void invokeOnewayWithInterceptor(final Channel channel, final RemotingCommand request, long timeoutMillis) {
+    public void invokeOnewayWithInterceptor(final Channel channel, final RemotingCommand request) {
         request.trafficType(TrafficType.REQUEST_ONEWAY);
 
         this.interceptorGroup.beforeRequest(new RequestContext(RemotingEndPoint.REQUEST, extractRemoteAddress(channel), request));
-
-        Exception exception = null;
-
-        try {
-            this.invokeOneway0(channel, request, timeoutMillis);
-        } catch (InterruptedException e) {
-            exception = e;
-        } finally {
-            if (null != exception) {
-                try {
-                    this.interceptorGroup.onException(new ExceptionContext(RemotingEndPoint.REQUEST, extractRemoteAddress(channel), request, exception, "REMOTING_EXCEPTION"));
-                } catch (Throwable e) {
-                    LOG.warn("onException ", e);
-                }
-            }
-        }
+        this.invokeOneway0(channel, request);
     }
 
-    private void invokeOneway0(final Channel channel, final RemotingCommand request,
-        final long timeoutMillis) throws InterruptedException {
-        boolean acquired = this.semaphoreOneway.tryAcquire(timeoutMillis, TimeUnit.MILLISECONDS);
+    private void invokeOneway0(final Channel channel, final RemotingCommand request) {
+        boolean acquired = this.semaphoreOneway.tryAcquire();
         if (acquired) {
             final SemaphoreReleaseOnlyOnce once = new SemaphoreReleaseOnlyOnce(this.semaphoreOneway);
             try {
@@ -459,7 +442,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
 
                 ChannelFutureListener listener = new ChannelFutureListener() {
                     @Override
-                    public void operationComplete(ChannelFuture f) throws Exception {
+                    public void operationComplete(ChannelFuture f) {
                         once.release();
                         if (!f.isSuccess()) {
                             LOG.warn("Send request command to channel {} failed !", socketAddress);
@@ -473,10 +456,8 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                 LOG.error("Send request command to channel " + channel + " error !", e);
             }
         } else {
-            String info = String.format("Semaphore tryAcquire %d ms timeout for request %s ,waiting thread nums: %d,availablePermits: %d",
-                timeoutMillis, request.toString(), semaphoreAsync.getQueueLength(), this.semaphoreAsync.availablePermits());
+            String info = String.format("No available oneway semaphore to issue the request %s", request.toString());
             LOG.error(info);
-            throw new RemoteTimeoutException(info);
         }
     }
 

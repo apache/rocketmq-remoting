@@ -23,16 +23,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.apache.rocketmq.remoting.api.AsyncHandler;
-import org.apache.rocketmq.remoting.api.RemotingEndPoint;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
-import org.apache.rocketmq.remoting.api.interceptor.ExceptionContext;
 import org.apache.rocketmq.remoting.api.interceptor.InterceptorGroup;
-import org.apache.rocketmq.remoting.api.interceptor.ResponseContext;
+import org.jetbrains.annotations.Nullable;
 
-public class ResponseResult {
+public class ResponseFuture {
     private final long beginTimestamp = System.currentTimeMillis();
     private final CountDownLatch countDownLatch = new CountDownLatch(1);
-    private final AtomicBoolean interceptorExecuted = new AtomicBoolean(false);
+    private final AtomicBoolean asyncHandlerExecuted = new AtomicBoolean(false);
 
     private int requestId;
     private long timeoutMillis;
@@ -47,54 +45,27 @@ public class ResponseResult {
     private InterceptorGroup interceptorGroup;
     private String remoteAddr;
 
-    public ResponseResult(int requestId, long timeoutMillis, AsyncHandler asyncHandler, SemaphoreReleaseOnlyOnce once) {
+    public ResponseFuture(int requestId, long timeoutMillis, AsyncHandler asyncHandler, @Nullable SemaphoreReleaseOnlyOnce once) {
         this.requestId = requestId;
         this.timeoutMillis = timeoutMillis;
         this.asyncHandler = asyncHandler;
         this.once = once;
     }
 
-    public ResponseResult(int requestId, long timeoutMillis) {
+    public ResponseFuture(int requestId, long timeoutMillis) {
         this.requestId = requestId;
         this.timeoutMillis = timeoutMillis;
     }
 
-    public void executeRequestSendFailed() {
-        if (this.interceptorExecuted.compareAndSet(false, true)) {
-            try {
-                interceptorGroup.onException(new ExceptionContext(RemotingEndPoint.REQUEST, this.remoteAddr, this.requestCommand,
-                    cause, "REQUEST_SEND_FAILED"));
-            } catch (Throwable e) {
-            }
-            //Sync call
-            if (null != asyncHandler) {
-                asyncHandler.onFailure(requestCommand);
-            }
-        }
-    }
-
-    public void executeCallbackArrived(final RemotingCommand response) {
-        if (this.interceptorExecuted.compareAndSet(false, true)) {
-            try {
-                interceptorGroup.afterResponseReceived(new ResponseContext(RemotingEndPoint.REQUEST, this.remoteAddr,
-                    this.requestCommand, response));
-            } catch (Throwable e) {
-            }
-            if (null != asyncHandler) {
-                asyncHandler.onSuccess(response);
-            }
-        }
-    }
-
-    public void onTimeout(long costTimeMillis, long timoutMillis) {
-        if (this.interceptorExecuted.compareAndSet(false, true)) {
-            try {
-                interceptorGroup.onException(new ExceptionContext(RemotingEndPoint.REQUEST, this.remoteAddr, this.requestCommand,
-                    null, "CALLBACK_TIMEOUT"));
-            } catch (Throwable ignore) {
-            }
-            if (null != asyncHandler) {
-                asyncHandler.onTimeout(costTimeMillis, timoutMillis);
+    public void executeAsyncHandler() {
+        if (asyncHandler != null) {
+            if (this.asyncHandlerExecuted.compareAndSet(false, true)) {
+                if (cause != null) {
+                    asyncHandler.onFailure(requestCommand, cause);
+                } else {
+                    assert responseCommand != null;
+                    asyncHandler.onSuccess(responseCommand);
+                }
             }
         }
     }

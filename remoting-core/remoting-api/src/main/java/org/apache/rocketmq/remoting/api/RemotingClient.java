@@ -24,5 +24,5 @@ public interface RemotingClient extends RemotingService {
 
     void invokeAsync(String address, RemotingCommand request, AsyncHandler asyncHandler, long timeoutMillis);
 
-    void invokeOneWay(String address, RemotingCommand request, long timeoutMillis);
+    void invokeOneWay(String address, RemotingCommand request);
 }

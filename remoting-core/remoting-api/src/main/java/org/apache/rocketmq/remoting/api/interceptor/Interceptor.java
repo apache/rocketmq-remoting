@@ -18,9 +18,7 @@
 package org.apache.rocketmq.remoting.api.interceptor;
 
 public interface Interceptor {
-    void beforeRequest(final RequestContext context);
+    void beforeRequest(RequestContext context);
 
-    void afterResponseReceived(final ResponseContext context);
-
-    void onException(final ExceptionContext context);
+    void afterResponseReceived(ResponseContext context);
 }

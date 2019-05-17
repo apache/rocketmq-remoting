@@ -25,14 +25,13 @@ import org.apache.rocketmq.remoting.common.Pair;
 public interface RemotingService extends ConnectionService, ObjectLifecycle {
     void registerInterceptor(Interceptor interceptor);
 
-    void registerRequestProcessor(final short requestCode, final RequestProcessor processor,
-        final ExecutorService executor);
+    void registerRequestProcessor(short requestCode, RequestProcessor processor, ExecutorService executor);
 
-    void registerRequestProcessor(final short requestCode, final RequestProcessor processor);
+    void registerRequestProcessor(short requestCode, RequestProcessor processor);
 
-    void unregisterRequestProcessor(final short requestCode);
+    void unregisterRequestProcessor(short requestCode);
 
-    Pair<RequestProcessor, ExecutorService> processor(final short requestCode);
+    Pair<RequestProcessor, ExecutorService> processor(short requestCode);
 
     String remotingInstanceId();
 

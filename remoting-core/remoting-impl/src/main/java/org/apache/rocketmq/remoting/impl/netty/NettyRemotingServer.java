@@ -195,9 +195,8 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
     }
 
     @Override
-    public void invokeOneWay(final RemotingChannel remotingChannel, final RemotingCommand request,
-        final long timeoutMillis) {
-        invokeOnewayWithInterceptor(((NettyChannelImpl) remotingChannel).getChannel(), request, timeoutMillis);
+    public void invokeOneWay(final RemotingChannel remotingChannel, final RemotingCommand request) {
+        invokeOnewayWithInterceptor(((NettyChannelImpl) remotingChannel).getChannel(), request);
     }
 
     private class ServerConnectionHandler extends ChannelDuplexHandler {

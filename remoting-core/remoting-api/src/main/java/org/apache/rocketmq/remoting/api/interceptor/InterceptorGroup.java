@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class InterceptorGroup {
-    private final List<Interceptor> interceptors = new ArrayList<Interceptor>();
+    private final List<Interceptor> interceptors = new ArrayList<>();
 
     public void registerInterceptor(final Interceptor interceptor) {
         if (interceptor != null) {
@@ -38,12 +38,6 @@ public class InterceptorGroup {
     public void afterResponseReceived(final ResponseContext context) {
         for (Interceptor interceptor : interceptors) {
             interceptor.afterResponseReceived(context);
-        }
-    }
-
-    public void onException(final ExceptionContext context) {
-        for (Interceptor interceptor : interceptors) {
-            interceptor.onException(context);
         }
     }
 }

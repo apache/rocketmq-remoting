@@ -25,8 +25,7 @@ public interface RemotingServer extends RemotingService {
 
     RemotingCommand invoke(RemotingChannel remotingChannel, RemotingCommand request, long timeoutMillis);
 
-    void invokeAsync(RemotingChannel remotingChannel, RemotingCommand request, AsyncHandler asyncHandler,
-        long timeoutMillis);
+    void invokeAsync(RemotingChannel remotingChannel, RemotingCommand request, AsyncHandler asyncHandler, long timeoutMillis);
 
-    void invokeOneWay(RemotingChannel remotingChannel, RemotingCommand request, long timeoutMillis);
+    void invokeOneWay(RemotingChannel remotingChannel, RemotingCommand request);
 }

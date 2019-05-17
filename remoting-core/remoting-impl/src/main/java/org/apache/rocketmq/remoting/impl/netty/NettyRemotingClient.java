@@ -351,11 +351,6 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
 
         final Channel channel = this.createIfAbsent(address);
         if (channel != null && channel.isActive()) {
-            // We support Netty's channel-level backpressure thereby respecting slow receivers on the other side.
-            if (!channel.isWritable()) {
-                // Note: It's up to the layer above a transport to decide whether or not to requeue a canceled write.
-                LOG.warn("Channel statistics - bytesBeforeUnwritable:{},bytesBeforeWritable:{}", channel.bytesBeforeUnwritable(), channel.bytesBeforeWritable());
-            }
             this.invokeAsyncWithInterceptor(channel, request, asyncHandler, timeoutMillis);
         } else {
             this.closeChannel(address, channel);
@@ -363,15 +358,10 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
     }
 
     @Override
-    public void invokeOneWay(final String address, final RemotingCommand request, final long timeoutMillis) {
+    public void invokeOneWay(final String address, final RemotingCommand request) {
         final Channel channel = this.createIfAbsent(address);
         if (channel != null && channel.isActive()) {
-            if (!channel.isWritable()) {
-                //if (this.clientConfig.isSocketFlowControl()) {
-                LOG.warn("Channel statistics - bytesBeforeUnwritable:{},bytesBeforeWritable:{}", channel.bytesBeforeUnwritable(), channel.bytesBeforeWritable());
-                //throw new ServiceInvocationFailureException(String.format("Channel[%s] is not writable now", channel.toString()));
-            }
-            this.invokeOnewayWithInterceptor(channel, request, timeoutMillis);
+            this.invokeOnewayWithInterceptor(channel, request);
         } else {
             this.closeChannel(address, channel);
         }

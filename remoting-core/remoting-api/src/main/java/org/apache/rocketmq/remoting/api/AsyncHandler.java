@@ -26,9 +26,7 @@ import org.apache.rocketmq.remoting.api.command.RemotingCommand;
  * @since 1.0.0
  */
 public interface AsyncHandler {
-    void onFailure(RemotingCommand command);
+    void onFailure(RemotingCommand request, Throwable cause);
 
-    void onSuccess(RemotingCommand command);
-
-    void onTimeout(long costTimeMillis, long timeoutMillis);
+    void onSuccess(RemotingCommand response);
 }

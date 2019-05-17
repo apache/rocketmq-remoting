@@ -34,30 +34,6 @@ public class ResponseContext extends RequestContext {
         this.response = response;
     }
 
-    public RemotingEndPoint getRemotingEndPoint() {
-        return remotingEndPoint;
-    }
-
-    public void setRemotingEndPoint(RemotingEndPoint remotingEndPoint) {
-        this.remotingEndPoint = remotingEndPoint;
-    }
-
-    public String getRemoteAddr() {
-        return remoteAddr;
-    }
-
-    public void setRemoteAddr(String remoteAddr) {
-        this.remoteAddr = remoteAddr;
-    }
-
-    public RemotingCommand getRequest() {
-        return request;
-    }
-
-    public void setRequest(RemotingCommand request) {
-        this.request = request;
-    }
-
     @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this, ToStringStyle.MULTI_LINE_STYLE);
