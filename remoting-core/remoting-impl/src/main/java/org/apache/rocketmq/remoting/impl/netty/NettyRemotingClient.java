@@ -70,7 +70,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
     private final Lock lockChannelTables = new ReentrantLock();
     private EventExecutorGroup workerGroup;
 
-    NettyRemotingClient(final RemotingConfig clientConfig) {
+    public NettyRemotingClient(final RemotingConfig clientConfig) {
         super(clientConfig);
         this.clientConfig = clientConfig;
 

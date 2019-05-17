@@ -66,7 +66,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
 
     private int port;
 
-    NettyRemotingServer(final RemotingConfig serverConfig) {
+    public NettyRemotingServer(final RemotingConfig serverConfig) {
         super(serverConfig);
 
         this.serverBootstrap = new ServerBootstrap();

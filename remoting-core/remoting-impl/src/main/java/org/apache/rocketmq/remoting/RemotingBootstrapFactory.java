@@ -15,11 +15,13 @@
  * limitations under the License.
  */
 
-package org.apache.rocketmq.remoting.impl.netty;
+package org.apache.rocketmq.remoting;
 
 import java.util.Properties;
 import org.apache.rocketmq.remoting.api.RemotingClient;
 import org.apache.rocketmq.remoting.config.RemotingConfig;
+import org.apache.rocketmq.remoting.impl.netty.NettyRemotingClient;
+import org.apache.rocketmq.remoting.impl.netty.NettyRemotingServer;
 import org.apache.rocketmq.remoting.internal.BeanUtils;
 import org.apache.rocketmq.remoting.internal.PropertyUtils;
 import org.jetbrains.annotations.NotNull;
