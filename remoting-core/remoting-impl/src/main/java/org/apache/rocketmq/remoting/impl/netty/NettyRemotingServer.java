@@ -127,6 +127,25 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         startUpHouseKeepingService();
     }
 
+    @Override
+    public void stop() {
+        try {
+            ThreadUtils.shutdownGracefully(houseKeepingService, 3000, TimeUnit.MILLISECONDS);
+
+            ThreadUtils.shutdownGracefully(channelEventExecutor);
+
+            this.bossGroup.shutdownGracefully().syncUninterruptibly();
+
+            this.ioGroup.shutdownGracefully().syncUninterruptibly();
+
+            this.workerGroup.shutdownGracefully().syncUninterruptibly();
+        } catch (Exception e) {
+            LOG.warn("RemotingServer stopped error !", e);
+        }
+
+        super.stop();
+    }
+
     private void applyOptions(ServerBootstrap bootstrap) {
         //option() is for the NioServerSocketChannel that accepts incoming connections.
         //childOption() is for the Channels accepted by the parent ServerChannel, which is NioServerSocketChannel in this case
@@ -155,25 +174,6 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         if (serverConfig.isServerPooledBytebufAllocatorEnable()) {
             bootstrap.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
         }
-    }
-
-    @Override
-    public void stop() {
-        try {
-            ThreadUtils.shutdownGracefully(houseKeepingService, 3000, TimeUnit.MILLISECONDS);
-
-            ThreadUtils.shutdownGracefully(channelEventExecutor);
-
-            this.bossGroup.shutdownGracefully().syncUninterruptibly();
-
-            this.ioGroup.shutdownGracefully().syncUninterruptibly();
-
-            this.workerGroup.shutdownGracefully().syncUninterruptibly();
-        } catch (Exception e) {
-            LOG.warn("RemotingServer stopped error !", e);
-        }
-
-        super.stop();
     }
 
     @Override

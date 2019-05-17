@@ -45,7 +45,8 @@ public class ResponseFuture {
     private InterceptorGroup interceptorGroup;
     private String remoteAddr;
 
-    public ResponseFuture(int requestId, long timeoutMillis, AsyncHandler asyncHandler, @Nullable SemaphoreReleaseOnlyOnce once) {
+    public ResponseFuture(int requestId, long timeoutMillis, AsyncHandler asyncHandler,
+        @Nullable SemaphoreReleaseOnlyOnce once) {
         this.requestId = requestId;
         this.timeoutMillis = timeoutMillis;
         this.asyncHandler = asyncHandler;

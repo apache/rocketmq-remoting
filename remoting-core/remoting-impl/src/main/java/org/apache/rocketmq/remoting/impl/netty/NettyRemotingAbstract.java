@@ -111,7 +111,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
             }
         }
 
-        for (Integer requestID: rList) {
+        for (Integer requestID : rList) {
             ResponseFuture rf = this.ackTables.remove(requestID);
 
             if (rf != null) {
@@ -360,8 +360,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
             if (null == responseCommand) {
                 if (responseFuture.isSendRequestOK()) {
                     throw new RemoteTimeoutException(extractRemoteAddress(channel), timeoutMillis, responseFuture.getCause());
-                }
-                else {
+                } else {
                     throw new RemoteAccessException(extractRemoteAddress(channel), responseFuture.getCause());
                 }
             }
@@ -494,13 +493,13 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         return this.getRemotingInstanceId();
     }
 
-    public String getRemotingInstanceId() {
-        return remotingInstanceId;
-    }
-
     @Override
     public RemotingCommandFactory commandFactory() {
         return this.remotingCommandFactory;
+    }
+
+    public String getRemotingInstanceId() {
+        return remotingInstanceId;
     }
 
     @Override

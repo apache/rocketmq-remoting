@@ -112,28 +112,6 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
         startUpHouseKeepingService();
     }
 
-    private void applyOptions(Bootstrap bootstrap) {
-        if (null != clientConfig) {
-            if (clientConfig.getTcpSoLinger() > 0) {
-                bootstrap.option(ChannelOption.SO_LINGER, clientConfig.getTcpSoLinger());
-            }
-
-            if (clientConfig.getTcpSoSndBufSize() > 0) {
-                bootstrap.option(ChannelOption.SO_SNDBUF, clientConfig.getTcpSoSndBufSize());
-            }
-            if (clientConfig.getTcpSoRcvBufSize() > 0) {
-                bootstrap.option(ChannelOption.SO_RCVBUF, clientConfig.getTcpSoRcvBufSize());
-            }
-
-            bootstrap.option(ChannelOption.SO_REUSEADDR, clientConfig.isTcpSoReuseAddress()).
-                option(ChannelOption.SO_KEEPALIVE, clientConfig.isTcpSoKeepAlive()).
-                option(ChannelOption.TCP_NODELAY, clientConfig.isTcpSoNoDelay()).
-                option(ChannelOption.CONNECT_TIMEOUT_MILLIS, clientConfig.getTcpSoTimeout()).
-                option(ChannelOption.WRITE_BUFFER_WATER_MARK, new WriteBufferWaterMark(clientConfig.getWriteBufLowWaterMark(),
-                    clientConfig.getWriteBufHighWaterMark()));
-        }
-    }
-
     @Override
     public void stop() {
         try {
@@ -155,6 +133,28 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
         }
 
         super.stop();
+    }
+
+    private void applyOptions(Bootstrap bootstrap) {
+        if (null != clientConfig) {
+            if (clientConfig.getTcpSoLinger() > 0) {
+                bootstrap.option(ChannelOption.SO_LINGER, clientConfig.getTcpSoLinger());
+            }
+
+            if (clientConfig.getTcpSoSndBufSize() > 0) {
+                bootstrap.option(ChannelOption.SO_SNDBUF, clientConfig.getTcpSoSndBufSize());
+            }
+            if (clientConfig.getTcpSoRcvBufSize() > 0) {
+                bootstrap.option(ChannelOption.SO_RCVBUF, clientConfig.getTcpSoRcvBufSize());
+            }
+
+            bootstrap.option(ChannelOption.SO_REUSEADDR, clientConfig.isTcpSoReuseAddress()).
+                option(ChannelOption.SO_KEEPALIVE, clientConfig.isTcpSoKeepAlive()).
+                option(ChannelOption.TCP_NODELAY, clientConfig.isTcpSoNoDelay()).
+                option(ChannelOption.CONNECT_TIMEOUT_MILLIS, clientConfig.getTcpSoTimeout()).
+                option(ChannelOption.WRITE_BUFFER_WATER_MARK, new WriteBufferWaterMark(clientConfig.getWriteBufLowWaterMark(),
+                    clientConfig.getWriteBufHighWaterMark()));
+        }
     }
 
     private void closeChannel(final String addr, final Channel channel) {
@@ -277,6 +277,28 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
 
     }
 
+    @Override
+    public void invokeAsync(final String address, final RemotingCommand request, final AsyncHandler asyncHandler,
+        final long timeoutMillis) {
+
+        final Channel channel = this.createIfAbsent(address);
+        if (channel != null && channel.isActive()) {
+            this.invokeAsyncWithInterceptor(channel, request, asyncHandler, timeoutMillis);
+        } else {
+            this.closeChannel(address, channel);
+        }
+    }
+
+    @Override
+    public void invokeOneWay(final String address, final RemotingCommand request) {
+        final Channel channel = this.createIfAbsent(address);
+        if (channel != null && channel.isActive()) {
+            this.invokeOnewayWithInterceptor(channel, request);
+        } else {
+            this.closeChannel(address, channel);
+        }
+    }
+
     private Channel createIfAbsent(final String addr) {
         ChannelWrapper cw = this.channelTables.get(addr);
         if (cw != null && cw.isActive()) {
@@ -343,28 +365,6 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
             }
         }
         return null;
-    }
-
-    @Override
-    public void invokeAsync(final String address, final RemotingCommand request, final AsyncHandler asyncHandler,
-        final long timeoutMillis) {
-
-        final Channel channel = this.createIfAbsent(address);
-        if (channel != null && channel.isActive()) {
-            this.invokeAsyncWithInterceptor(channel, request, asyncHandler, timeoutMillis);
-        } else {
-            this.closeChannel(address, channel);
-        }
-    }
-
-    @Override
-    public void invokeOneWay(final String address, final RemotingCommand request) {
-        final Channel channel = this.createIfAbsent(address);
-        if (channel != null && channel.isActive()) {
-            this.invokeOnewayWithInterceptor(channel, request);
-        } else {
-            this.closeChannel(address, channel);
-        }
     }
 
     private class ChannelWrapper {

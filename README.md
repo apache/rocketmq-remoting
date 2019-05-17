@@ -1,3 +1,3 @@
-## Apache RocketMQ XXX
+## Apache RocketMQ X
 
-Apache RocketMQ XXX is the next generation of RocketMQ, which is extremely simple and high available.
+Apache RocketMQ X is the next generation of RocketMQ, which is extremely simple and high available.

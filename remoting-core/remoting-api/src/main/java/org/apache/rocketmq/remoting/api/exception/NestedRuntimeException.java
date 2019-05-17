@@ -51,15 +51,6 @@ public abstract class NestedRuntimeException extends RuntimeException {
     }
 
     /**
-     * Return the detail message, including the message from the nested exception
-     * if there is one.
-     */
-    @Override
-    public String getMessage() {
-        return getMessageWithCause(super.getMessage(), getCause());
-    }
-
-    /**
      * Build a message for the given base message and root cause.
      *
      * @param message the base message
@@ -77,6 +68,15 @@ public abstract class NestedRuntimeException extends RuntimeException {
         } else {
             return message;
         }
+    }
+
+    /**
+     * Return the detail message, including the message from the nested exception
+     * if there is one.
+     */
+    @Override
+    public String getMessage() {
+        return getMessageWithCause(super.getMessage(), getCause());
     }
 
     /**

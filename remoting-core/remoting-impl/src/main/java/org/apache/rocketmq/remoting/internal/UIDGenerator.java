@@ -55,6 +55,10 @@ public class UIDGenerator {
         counter = 0;
     }
 
+    public static UIDGenerator instance() {
+        return generatorLocal.get();
+    }
+
     public byte[] createFakeIP() {
         ByteBuffer bb = ByteBuffer.allocate(8);
         bb.putLong(System.currentTimeMillis());
@@ -75,10 +79,6 @@ public class UIDGenerator {
         startTime = cal.getTimeInMillis();
         cal.add(Calendar.MONTH, 1);
         nextStartTime = cal.getTimeInMillis();
-    }
-
-    public static UIDGenerator instance() {
-        return generatorLocal.get();
     }
 
     public String createUID() {
