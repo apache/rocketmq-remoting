@@ -24,6 +24,7 @@
     <modules>
         <module>remoting-core/remoting-api</module>
         <module>remoting-core/remoting-impl</module>
+        <module>benchmarks/remoting-benchmark</module>
     </modules>
 
     <dependencies>
@@ -52,6 +53,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>remoting-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>remoting-impl</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
