@@ -100,12 +100,14 @@ public class CodecHelper {
             out.writeBytes(remark);
         }
 
-        if (propsLen != 0) {
+        if (props != null) {
             out.writeShort((short) props.length);
             for (byte[] prop : props) {
                 out.writeShort((short) prop.length);
                 out.writeBytes(prop);
             }
+        } else {
+            out.writeShort((short) 0);
         }
 
         out.writeInt(payloadLen);
