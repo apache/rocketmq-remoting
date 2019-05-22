@@ -29,8 +29,6 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
-import io.netty.channel.group.ChannelGroup;
-import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
@@ -40,7 +38,6 @@ import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.EventExecutorGroup;
-import io.netty.util.concurrent.GlobalEventExecutor;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 import org.apache.rocketmq.remoting.api.AsyncHandler;
@@ -50,7 +47,6 @@ import org.apache.rocketmq.remoting.api.command.RemotingCommand;
 import org.apache.rocketmq.remoting.config.RemotingConfig;
 import org.apache.rocketmq.remoting.external.ThreadUtils;
 import org.apache.rocketmq.remoting.impl.channel.NettyChannelImpl;
-import org.apache.rocketmq.remoting.impl.netty.handler.ChannelStatistics;
 import org.apache.rocketmq.remoting.impl.netty.handler.Decoder;
 import org.apache.rocketmq.remoting.impl.netty.handler.Encoder;
 import org.apache.rocketmq.remoting.internal.JvmUtils;
@@ -98,16 +94,12 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
     public void start() {
         super.start();
 
-        final ChannelGroup channels = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
         this.serverBootstrap.group(this.bossGroup, this.ioGroup).
             channel(socketChannelClass).childHandler(new ChannelInitializer<SocketChannel>() {
             @Override
             public void initChannel(SocketChannel ch) throws Exception {
-                channels.add(ch);
-
                 ChannelPipeline cp = ch.pipeline();
 
-                cp.addLast(ChannelStatistics.NAME, new ChannelStatistics(channels));
                 cp.addLast(workerGroup,
                     new Encoder(),
                     new Decoder(),
