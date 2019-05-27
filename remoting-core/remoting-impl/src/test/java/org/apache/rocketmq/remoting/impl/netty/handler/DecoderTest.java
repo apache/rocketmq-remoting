@@ -33,7 +33,7 @@ import static org.junit.Assert.assertEquals;
 public class DecoderTest extends BaseTest {
 
     @Test
-    public void decode() {
+    public void decode_Success() {
         EmbeddedChannel channel = new EmbeddedChannel(new Encoder(), new Decoder());
 
         RemotingCommand request = randomRemotingCommand();
@@ -49,7 +49,7 @@ public class DecoderTest extends BaseTest {
     }
 
     @Test
-    public void decode_WithException() {
+    public void decode_WrongMagicCode_ChannelClosed() {
         // Magic Code doesn't match
         EmbeddedChannel channel = new EmbeddedChannel(new Decoder());
 
@@ -58,8 +58,13 @@ public class DecoderTest extends BaseTest {
         buf.retain();
 
         flushChannelWithException(channel, buf);
+    }
 
-        channel = new EmbeddedChannel(new Decoder());
+    @Test
+    public void decode_LenOverLimit_ChannelClosed() {
+        // Magic Code doesn't match
+        ByteBuf buf = ByteBufAllocator.DEFAULT.heapBuffer();
+        EmbeddedChannel channel = new EmbeddedChannel(new Decoder());
 
         buf.resetReaderIndex();
         buf.resetWriterIndex();

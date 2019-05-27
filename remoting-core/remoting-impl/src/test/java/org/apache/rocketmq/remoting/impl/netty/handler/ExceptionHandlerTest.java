@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 public class ExceptionHandlerTest extends BaseTest {
 
     @Test
-    public void exceptionCaught_WithException() {
+    public void exceptionCaught_ExceptionThrown_ChannelClosed() {
         EmbeddedChannel channel = new EmbeddedChannel();
         ByteBuf buffer = ByteBufAllocator.DEFAULT.heapBuffer();
         channel.pipeline().addLast(new ByteToMessageDecoder() {

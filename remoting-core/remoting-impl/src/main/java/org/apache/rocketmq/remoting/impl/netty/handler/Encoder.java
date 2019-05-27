@@ -59,7 +59,7 @@ public class Encoder extends MessageToByteEncoder<RemotingCommand> {
         }
     }
 
-    public void encode(final RemotingCommand remotingCommand, final ByteBufferWrapper out) {
+    private void encode(final RemotingCommand remotingCommand, final ByteBufferWrapper out) {
         CodecHelper.encodeCommand(remotingCommand, out);
     }
 }

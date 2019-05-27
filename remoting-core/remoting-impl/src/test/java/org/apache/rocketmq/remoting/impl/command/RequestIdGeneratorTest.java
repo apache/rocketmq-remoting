@@ -24,7 +24,7 @@ import static org.junit.Assert.*;
 public class RequestIdGeneratorTest {
 
     @Test
-    public void incrementAndGet() {
+    public void incrementAndGet_Success() {
         int numA = RequestIdGenerator.inst.incrementAndGet();
         int numB = RequestIdGenerator.inst.incrementAndGet();
 

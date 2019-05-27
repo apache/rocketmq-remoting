@@ -26,7 +26,7 @@ import static org.junit.Assert.*;
 public class SemaphoreReleaseOnlyOnceTest extends BaseTest {
 
     @Test
-    public void release() {
+    public void release_Success() {
         Semaphore semaphore = new Semaphore(0);
         final SemaphoreReleaseOnlyOnce once = new SemaphoreReleaseOnlyOnce(semaphore);
 

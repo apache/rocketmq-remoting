@@ -35,7 +35,7 @@ import static org.junit.Assert.assertEquals;
 public class EncoderTest extends BaseTest {
 
     @Test
-    public void encode() {
+    public void encode_Success() {
         EmbeddedChannel channel = new EmbeddedChannel(new Encoder());
 
         RemotingCommand request = randomRemotingCommand();
@@ -54,7 +54,7 @@ public class EncoderTest extends BaseTest {
 
 
     @Test
-    public void encode_WithException() {
+    public void encode_LenOverLimit_ChannelClosed() {
         EmbeddedChannel channel = new EmbeddedChannel(new Encoder());
 
         RemotingCommand request = randomRemotingCommand();

@@ -36,7 +36,7 @@ import static org.junit.Assert.assertEquals;
 public class CodecHelperTest extends BaseTest {
 
     @Test
-    public void encodeAndDecodeCommand() {
+    public void encodeAndDecodeCommand_Success() {
         ByteBufferWrapper buffer = new NettyByteBufferWrapper(ByteBufAllocator.DEFAULT.heapBuffer());
         RemotingCommand command = randomRemotingCommand();
         CodecHelper.encodeCommand(command, buffer);
@@ -51,7 +51,7 @@ public class CodecHelperTest extends BaseTest {
     }
 
     @Test
-    public void encodeCommand_WithException() {
+    public void encodeCommand_LenOverLimit_ExceptionThrown() {
         ByteBufferWrapper buffer = new NettyByteBufferWrapper(ByteBufAllocator.DEFAULT.heapBuffer());
         RemotingCommand command = randomRemotingCommand();
 
@@ -96,7 +96,7 @@ public class CodecHelperTest extends BaseTest {
     }
 
     @Test
-    public void decodeCommand_WithException() {
+    public void decodeCommand_LenOverLimit_ExceptionThrown() {
         ByteBufferWrapper buffer = new NettyByteBufferWrapper(ByteBufAllocator.DEFAULT.heapBuffer());
 
         buffer.writeShort((short) 0);

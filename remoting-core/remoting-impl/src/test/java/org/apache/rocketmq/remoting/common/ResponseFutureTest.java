@@ -32,7 +32,7 @@ public class ResponseFutureTest extends BaseTest {
     private RemotingCommandFactoryImpl factory = new RemotingCommandFactoryImpl();
 
     @Test
-    public void executeAsyncHandler_WithSuccess() {
+    public void executeAsyncHandler_Success() {
         final RemotingCommand reqCommand = factory.createRequest();
         final RemotingCommand resCommand = factory.createResponse(reqCommand);
         future = new ResponseFuture(1, 3000, new AsyncHandler() {
@@ -53,7 +53,7 @@ public class ResponseFutureTest extends BaseTest {
     }
 
     @Test
-    public void executeAsyncHandler_WithFailure() {
+    public void executeAsyncHandler_Failure() {
         final RemotingCommand reqCommand = factory.createRequest();
         final RemotingCommand resCommand = factory.createResponse(reqCommand);
         final Throwable exception = new RuntimeException("Test Exception");
@@ -77,7 +77,7 @@ public class ResponseFutureTest extends BaseTest {
     }
 
     @Test
-    public void waitResponse_WithSuccess() {
+    public void waitResponse_Success() {
         future = new ResponseFuture(1, 1000, null, null);
         final RemotingCommand reqCommand = factory.createRequest();
         final RemotingCommand resCommand = factory.createResponse(reqCommand);
@@ -97,7 +97,7 @@ public class ResponseFutureTest extends BaseTest {
     }
 
     @Test
-    public void waitResponse_WithTimeout() {
+    public void waitResponse_Timeout() {
         future = new ResponseFuture(1, 1000, null, null);
         RemotingCommand response = future.waitResponse(10);
         assertNull(response);

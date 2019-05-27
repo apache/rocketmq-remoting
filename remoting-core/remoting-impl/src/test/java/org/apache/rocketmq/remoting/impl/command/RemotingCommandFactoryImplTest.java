@@ -28,7 +28,7 @@ public class RemotingCommandFactoryImplTest {
     private RemotingCommandFactory factory = new RemotingCommandFactoryImpl();
 
     @Test
-    public void createRequest() {
+    public void createRequest_Success() {
         RemotingCommand request = factory.createRequest();
 
         assertEquals(request.cmdCode(), 0);
@@ -42,7 +42,7 @@ public class RemotingCommandFactoryImplTest {
     }
 
     @Test
-    public void createResponse() {
+    public void createResponse_Success() {
         RemotingCommand request = factory.createRequest();
         request.cmdVersion((short) 123);
         request.cmdCode((short) 100);
