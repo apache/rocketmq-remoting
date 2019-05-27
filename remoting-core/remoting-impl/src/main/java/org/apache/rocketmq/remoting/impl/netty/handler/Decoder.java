@@ -82,11 +82,11 @@ public class Decoder extends ByteToMessageDecoder {
         int totalLength = wrapper.readInt();
 
         if (totalLength <= 0) {
-            throw new IllegalArgumentException("Illegal total length " + totalLength);
+            throw new RemoteCodecException("Illegal total length " + totalLength);
         }
 
         if (totalLength > CodecHelper.PACKET_MAX_LEN) {
-            throw new IllegalArgumentException(String.format("Total length %d is more than limit %d", totalLength, CodecHelper.PACKET_MAX_LEN));
+            throw new RemoteCodecException(String.format("Total length %d is more than limit %d", totalLength, CodecHelper.PACKET_MAX_LEN));
         }
 
         if (wrapper.readableBytes() < totalLength - 1 /*MagicCode*/ - 4 /*TotalLen*/) {

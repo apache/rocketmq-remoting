@@ -18,6 +18,8 @@
 package org.apache.rocketmq.remoting.impl.netty.handler;
 
 import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import org.slf4j.Logger;
@@ -28,10 +30,15 @@ public class ExceptionHandler extends ChannelDuplexHandler {
     private final static Logger LOG = LoggerFactory.getLogger(ExceptionHandler.class);
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+    public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) {
         // Uncaught exceptions from inbound handlers will propagate up to this handler
         LOG.error(String.format("channel exception %s occurred ! ", ctx.channel()), cause);
-        ctx.close();
+        ctx.channel().close().addListener(new ChannelFutureListener() {
+            @Override
+            public void operationComplete(ChannelFuture future) throws Exception {
+                LOG.warn("Close channel {} because of error {},result is {}", ctx.channel(), cause, future.isSuccess());
+            }
+        });
     }
 
 }
