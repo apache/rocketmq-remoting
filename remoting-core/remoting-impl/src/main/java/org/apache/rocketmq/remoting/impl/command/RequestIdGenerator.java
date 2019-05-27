@@ -25,7 +25,6 @@ public class RequestIdGenerator {
     private AtomicInteger generator = new AtomicInteger(0);
 
     private RequestIdGenerator() {
-
     }
 
     public int incrementAndGet() {

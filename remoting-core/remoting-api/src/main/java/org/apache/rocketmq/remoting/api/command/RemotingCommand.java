@@ -46,8 +46,6 @@ public interface RemotingCommand {
 
     Map<String, String> properties();
 
-    void properties(Map<String, String> value);
-
     String property(String key);
 
     void property(String key, String value);

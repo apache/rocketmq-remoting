@@ -15,46 +15,19 @@
  * limitations under the License.
  */
 
-package org.apache.rocketmq.remoting.api.buffer;
+package org.apache.rocketmq.remoting.impl.command;
 
-import java.nio.ByteBuffer;
+import org.junit.Test;
 
-public interface ByteBufferWrapper {
-    void writeByte(byte data);
+import static org.junit.Assert.*;
 
-    void writeByte(int index, byte data);
+public class RequestIdGeneratorTest {
 
-    void writeBytes(byte[] data);
+    @Test
+    public void incrementAndGet() {
+        int numA = RequestIdGenerator.inst.incrementAndGet();
+        int numB = RequestIdGenerator.inst.incrementAndGet();
 
-    void writeBytes(ByteBuffer data);
-
-    void writeInt(int data);
-
-    void writeShort(short value);
-
-    void writeLong(long id);
-
-    byte readByte();
-
-    void readBytes(byte[] dst);
-
-    void readBytes(ByteBuffer dst);
-
-    short readShort();
-
-    int readInt();
-
-    long readLong();
-
-    int readableBytes();
-
-    int readerIndex();
-
-    void setReaderIndex(int readerIndex);
-
-    int writerIndex();
-
-    void setWriterIndex(int writerIndex);
-
-    void ensureCapacity(int capacity);
+        assertEquals(numA, numB - 1);
+    }
 }

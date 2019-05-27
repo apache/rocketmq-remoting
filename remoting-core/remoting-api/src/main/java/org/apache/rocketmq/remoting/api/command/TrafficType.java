@@ -34,7 +34,7 @@ public enum TrafficType {
             case 3:
                 return RESPONSE;
             default:
-                throw new IllegalArgumentException("Not supported " + index);
+                throw new IllegalArgumentException("TrafficType " + index + " is not supported");
         }
     }
 }

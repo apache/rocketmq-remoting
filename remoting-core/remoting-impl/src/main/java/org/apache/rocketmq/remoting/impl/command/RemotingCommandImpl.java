@@ -17,6 +17,7 @@
 
 package org.apache.rocketmq.remoting.impl.command;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.commons.lang3.builder.EqualsBuilder;
@@ -103,12 +104,7 @@ public class RemotingCommandImpl implements RemotingCommand {
 
     @Override
     public Map<String, String> properties() {
-        return this.properties;
-    }
-
-    @Override
-    public void properties(Map<String, String> value) {
-        this.properties = value;
+        return Collections.unmodifiableMap(this.properties);
     }
 
     @Override
@@ -143,6 +139,6 @@ public class RemotingCommandImpl implements RemotingCommand {
 
     @Override
     public String toString() {
-        return ToStringBuilder.reflectionToString(this, ToStringStyle.MULTI_LINE_STYLE);
+        return ToStringBuilder.reflectionToString(this, ToStringStyle.SIMPLE_STYLE);
     }
 }

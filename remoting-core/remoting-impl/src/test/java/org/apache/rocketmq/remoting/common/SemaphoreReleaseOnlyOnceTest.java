@@ -15,46 +15,28 @@
  * limitations under the License.
  */
 
-package org.apache.rocketmq.remoting.api.buffer;
+package org.apache.rocketmq.remoting.common;
 
-import java.nio.ByteBuffer;
+import java.util.concurrent.Semaphore;
+import org.apache.rocketmq.remoting.BaseTest;
+import org.junit.Test;
 
-public interface ByteBufferWrapper {
-    void writeByte(byte data);
+import static org.junit.Assert.*;
 
-    void writeByte(int index, byte data);
+public class SemaphoreReleaseOnlyOnceTest extends BaseTest {
 
-    void writeBytes(byte[] data);
+    @Test
+    public void release() {
+        Semaphore semaphore = new Semaphore(0);
+        final SemaphoreReleaseOnlyOnce once = new SemaphoreReleaseOnlyOnce(semaphore);
 
-    void writeBytes(ByteBuffer data);
+        runInThreads(new Runnable() {
+            @Override
+            public void run() {
+                once.release();
+            }
+        }, 10);
 
-    void writeInt(int data);
-
-    void writeShort(short value);
-
-    void writeLong(long id);
-
-    byte readByte();
-
-    void readBytes(byte[] dst);
-
-    void readBytes(ByteBuffer dst);
-
-    short readShort();
-
-    int readInt();
-
-    long readLong();
-
-    int readableBytes();
-
-    int readerIndex();
-
-    void setReaderIndex(int readerIndex);
-
-    int writerIndex();
-
-    void setWriterIndex(int writerIndex);
-
-    void ensureCapacity(int capacity);
+        assertEquals(1, semaphore.availablePermits());
+    }
 }

@@ -104,8 +104,18 @@ public class NettyByteBufferWrapper implements ByteBufferWrapper {
     }
 
     @Override
-    public void setReaderIndex(int index) {
-        buffer.setIndex(index, buffer.writerIndex());
+    public void setReaderIndex(int readerIndex) {
+        buffer.setIndex(readerIndex, buffer.writerIndex());
+    }
+
+    @Override
+    public int writerIndex() {
+        return buffer.writerIndex();
+    }
+
+    @Override
+    public void setWriterIndex(int writerIndex) {
+        buffer.setIndex(buffer.readerIndex(), writerIndex);
     }
 
     @Override

@@ -79,8 +79,7 @@ public class ResponseFuture {
     public RemotingCommand waitResponse(final long timeoutMillis) {
         try {
             this.countDownLatch.await(timeoutMillis, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        } catch (InterruptedException ignore) {
         }
         return this.responseCommand;
     }

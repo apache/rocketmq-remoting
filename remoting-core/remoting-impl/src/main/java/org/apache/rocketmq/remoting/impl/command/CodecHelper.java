@@ -31,9 +31,9 @@ public class CodecHelper {
     public final static byte PROTOCOL_MAGIC = 0x14;
     private final static char PROPERTY_SEPARATOR = '\n';
     private final static Charset REMOTING_CHARSET = Charset.forName("UTF-8");
-    private final static int REMARK_MAX_LEN = Short.MAX_VALUE;
-    private final static int PROPERTY_MAX_LEN = 524288; // 512KB
-    private final static int PAYLOAD_MAX_LEN = 16777216; // 16MB
+    final static int REMARK_MAX_LEN = Short.MAX_VALUE;
+    final static int PROPERTY_MAX_LEN = 524288; // 512KB
+    final static int PAYLOAD_MAX_LEN = 16777216; // 16MB
     public final static int PACKET_MAX_LEN = MIN_PROTOCOL_LEN + REMARK_MAX_LEN + PROPERTY_MAX_LEN + PAYLOAD_MAX_LEN;
 
     public static void encodeCommand(final RemotingCommand command, final ByteBufferWrapper out) {
