@@ -22,7 +22,6 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,6 +57,7 @@ import org.apache.rocketmq.remoting.external.ThreadUtils;
 import org.apache.rocketmq.remoting.impl.channel.NettyChannelImpl;
 import org.apache.rocketmq.remoting.impl.command.RemotingCommandFactoryImpl;
 import org.apache.rocketmq.remoting.impl.command.RemotingSysResponseCode;
+import org.apache.rocketmq.remoting.internal.RemotingUtil;
 import org.apache.rocketmq.remoting.internal.UIDGenerator;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -88,7 +88,9 @@ public abstract class NettyRemotingAbstract implements RemotingService {
     }
 
     protected void putNettyEvent(final NettyChannelEvent event) {
-        this.channelEventExecutor.putNettyEvent(event);
+        if (channelEventListenerGroup != null && channelEventListenerGroup.size() != 0) {
+            this.channelEventExecutor.putNettyEvent(event);
+        }
     }
 
     protected void startUpHouseKeepingService() {
@@ -172,7 +174,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
             processorExecutorPair.getRight().submit(run);
         } catch (RejectedExecutionException e) {
             LOG.warn(String.format("Request %s from %s Rejected by server executor %s !", cmd,
-                extractRemoteAddress(ctx.channel()), processorExecutorPair.getRight().toString()));
+                RemotingUtil.extractRemoteAddress(ctx.channel()), processorExecutorPair.getRight().toString()));
 
             if (cmd.trafficType() != TrafficType.REQUEST_ONEWAY) {
                 RemotingCommand response = remotingCommandFactory.createResponse(cmd);
@@ -190,7 +192,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
             responseFuture.release();
 
             this.interceptorGroup.afterResponseReceived(new ResponseContext(RemotingEndPoint.REQUEST,
-                extractRemoteAddress(ctx.channel()), responseFuture.getRequestCommand(), response));
+                RemotingUtil.extractRemoteAddress(ctx.channel()), responseFuture.getRequestCommand(), response));
 
             if (responseFuture.getAsyncHandler() != null) {
                 executeAsyncHandler(responseFuture);
@@ -199,7 +201,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                 responseFuture.release();
             }
         } else {
-            LOG.warn("request {} from {} has not matched response !", response, extractRemoteAddress(ctx.channel()));
+            LOG.warn("request {} from {} has not matched response !", response, RemotingUtil.extractRemoteAddress(ctx.channel()));
         }
     }
 
@@ -211,12 +213,12 @@ public abstract class NettyRemotingAbstract implements RemotingService {
             public void run() {
                 try {
                     interceptorGroup.beforeRequest(new RequestContext(RemotingEndPoint.RESPONSE,
-                        extractRemoteAddress(ctx.channel()), cmd));
+                        RemotingUtil.extractRemoteAddress(ctx.channel()), cmd));
 
                     RemotingCommand response = processorExecutorPair.getLeft().processRequest(channel, cmd);
 
                     interceptorGroup.afterResponseReceived(new ResponseContext(RemotingEndPoint.RESPONSE,
-                        extractRemoteAddress(ctx.channel()), cmd, response));
+                        RemotingUtil.extractRemoteAddress(ctx.channel()), cmd, response));
 
                     handleResponse(response, cmd, ctx);
                 } catch (Throwable e) {
@@ -226,10 +228,6 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                 }
             }
         };
-    }
-
-    protected String extractRemoteAddress(Channel channel) {
-        return ((InetSocketAddress) channel.remoteAddress()).getAddress().getHostAddress();
     }
 
     private void writeAndFlush(final Channel channel, final Object msg) {
@@ -321,14 +319,14 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         long timeoutMillis) {
         request.trafficType(TrafficType.REQUEST_SYNC);
 
-        final String remoteAddr = extractRemoteAddress(channel);
+        final String remoteAddr = RemotingUtil.extractRemoteAddress(channel);
 
         this.interceptorGroup.beforeRequest(new RequestContext(RemotingEndPoint.REQUEST, remoteAddr, request));
 
         RemotingCommand responseCommand = this.invoke0(remoteAddr, channel, request, timeoutMillis);
 
         this.interceptorGroup.afterResponseReceived(new ResponseContext(RemotingEndPoint.REQUEST,
-            extractRemoteAddress(channel), request, responseCommand));
+            RemotingUtil.extractRemoteAddress(channel), request, responseCommand));
 
         return responseCommand;
     }
@@ -367,9 +365,9 @@ public abstract class NettyRemotingAbstract implements RemotingService {
 
             if (null == responseCommand) {
                 if (responseFuture.isSendRequestOK()) {
-                    throw new RemoteTimeoutException(extractRemoteAddress(channel), timeoutMillis, responseFuture.getCause());
+                    throw new RemoteTimeoutException(RemotingUtil.extractRemoteAddress(channel), timeoutMillis, responseFuture.getCause());
                 } else {
-                    throw new RemoteAccessException(extractRemoteAddress(channel), responseFuture.getCause());
+                    throw new RemoteAccessException(RemotingUtil.extractRemoteAddress(channel), responseFuture.getCause());
                 }
             }
 
@@ -387,7 +385,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         final AsyncHandler invokeCallback, long timeoutMillis) {
         request.trafficType(TrafficType.REQUEST_ASYNC);
 
-        final String remoteAddr = extractRemoteAddress(channel);
+        final String remoteAddr = RemotingUtil.extractRemoteAddress(channel);
 
         this.interceptorGroup.beforeRequest(new RequestContext(RemotingEndPoint.REQUEST, remoteAddr, request));
 
@@ -436,7 +434,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
     public void invokeOnewayWithInterceptor(final Channel channel, final RemotingCommand request) {
         request.trafficType(TrafficType.REQUEST_ONEWAY);
 
-        this.interceptorGroup.beforeRequest(new RequestContext(RemotingEndPoint.REQUEST, extractRemoteAddress(channel), request));
+        this.interceptorGroup.beforeRequest(new RequestContext(RemotingEndPoint.REQUEST, RemotingUtil.extractRemoteAddress(channel), request));
         this.invokeOneway0(channel, request);
     }
 
