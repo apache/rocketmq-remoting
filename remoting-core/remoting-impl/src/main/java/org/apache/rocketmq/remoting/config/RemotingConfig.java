@@ -38,7 +38,7 @@ public class RemotingConfig extends TcpSocketConfig {
     private int serviceThreadBlockQueueSize = 50000;
     private boolean clientNativeEpollEnable = false;
     private int clientWorkerThreads = 16 + Runtime.getRuntime().availableProcessors() * 2;
-    private int clientConnectionFutureAwaitTimeoutMillis = 30000;
+    private int clientConnectionFutureAwaitTimeoutMillis = 3000;
     private int clientAsyncCallbackExecutorThreads = 16 + Runtime.getRuntime().availableProcessors() * 2;
     private int clientOnewayInvokeSemaphore = 20480;
 

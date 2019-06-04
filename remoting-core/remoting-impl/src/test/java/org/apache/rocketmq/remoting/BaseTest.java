@@ -20,6 +20,7 @@ package org.apache.rocketmq.remoting;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
@@ -28,12 +29,32 @@ import org.apache.rocketmq.remoting.external.ThreadUtils;
 import org.apache.rocketmq.remoting.impl.command.RemotingCommandFactoryImpl;
 
 public class BaseTest {
-    protected void runInThreads(Runnable runnable, int threadsNum) {
+    protected void runInThreads(final Runnable runnable, int threadsNum) {
         ExecutorService executor = Executors.newFixedThreadPool(threadsNum);
         for (int i = 0; i < threadsNum; i++) {
-            executor.submit(runnable);
+            executor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    runnable.run();
+                }
+            });
         }
+
         ThreadUtils.shutdownGracefully(executor, 5, TimeUnit.SECONDS);
+    }
+
+    protected void runInThreads(final Runnable runnable, int threadsNum, int timeoutMillis) throws InterruptedException {
+        final Semaphore semaphore = new Semaphore(0);
+
+        runInThreads(new Runnable() {
+            @Override
+            public void run() {
+                runnable.run();
+                semaphore.release();
+            }
+        }, threadsNum);
+
+        semaphore.tryAcquire(threadsNum, timeoutMillis, TimeUnit.MILLISECONDS);
     }
 
     protected void shouldNotReachHere() {

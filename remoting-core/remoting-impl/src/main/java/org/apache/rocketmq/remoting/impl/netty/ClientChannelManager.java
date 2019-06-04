@@ -38,7 +38,7 @@ public class ClientChannelManager {
     protected static final Logger LOG = LoggerFactory.getLogger(ClientChannelManager.class);
 
     private static final long LOCK_TIMEOUT_MILLIS = 3000;
-    private final ConcurrentHashMap<String, ChannelWrapper> channelTables = new ConcurrentHashMap<>();
+    final ConcurrentHashMap<String, ChannelWrapper> channelTables = new ConcurrentHashMap<>();
     private final Lock lockChannelTables = new ReentrantLock();
     private final Bootstrap clientBootstrap;
     private final RemotingConfig clientConfig;
@@ -101,8 +101,7 @@ public class ClientChannelManager {
             } else {
                 LOG.warn("createChannel: try to lock channel table, but timeout, {}ms", LOCK_TIMEOUT_MILLIS);
             }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        } catch (InterruptedException ignore) {
         }
 
         if (cw != null) {
@@ -125,9 +124,6 @@ public class ClientChannelManager {
     }
 
     void closeChannel(final String addr, final Channel channel) {
-        if (null == channel)
-            return;
-
         final String addrRemote = null == addr ? extractRemoteAddress(channel) : addr;
         try {
             if (this.lockChannelTables.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
@@ -171,9 +167,6 @@ public class ClientChannelManager {
     }
 
     void closeChannel(final Channel channel) {
-        if (null == channel)
-            return;
-
         try {
             if (this.lockChannelTables.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
                 try {
