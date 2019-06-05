@@ -21,7 +21,7 @@ import java.util.concurrent.Semaphore;
 import org.apache.rocketmq.remoting.BaseTest;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public class SemaphoreReleaseOnlyOnceTest extends BaseTest {
 

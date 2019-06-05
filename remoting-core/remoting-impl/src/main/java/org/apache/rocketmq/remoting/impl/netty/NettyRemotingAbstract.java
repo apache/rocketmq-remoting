@@ -74,15 +74,20 @@ public abstract class NettyRemotingAbstract implements RemotingService {
     private final String remotingInstanceId = UIDGenerator.instance().createUID();
 
     private final ExecutorService publicExecutor;
+    private final ExecutorService asyncHandlerExecutor;
     protected ScheduledExecutorService houseKeepingService = ThreadUtils.newSingleThreadScheduledExecutor("HouseKeepingService", true);
     private InterceptorGroup interceptorGroup = new InterceptorGroup();
     private ChannelEventListenerGroup channelEventListenerGroup = new ChannelEventListenerGroup();
 
-    NettyRemotingAbstract(RemotingConfig clientConfig) {
-        this.semaphoreOneway = new Semaphore(clientConfig.getClientOnewayInvokeSemaphore(), true);
-        this.semaphoreAsync = new Semaphore(clientConfig.getClientAsyncInvokeSemaphore(), true);
+    NettyRemotingAbstract(RemotingConfig remotingConfig) {
+        this.semaphoreOneway = new Semaphore(remotingConfig.getOnewayInvokeSemaphore(), true);
+        this.semaphoreAsync = new Semaphore(remotingConfig.getAsyncInvokeSemaphore(), true);
         this.publicExecutor = ThreadUtils.newFixedThreadPool(
-            clientConfig.getClientAsyncCallbackExecutorThreads(),
+            remotingConfig.getPublicExecutorThreads(),
+            10000, "Remoting-PublicExecutor", true);
+
+        this.asyncHandlerExecutor = ThreadUtils.newFixedThreadPool(
+            remotingConfig.getAsyncHandlerExecutorThreads(),
             10000, "Remoting-PublicExecutor", true);
         this.remotingCommandFactory = new RemotingCommandFactoryImpl();
     }
@@ -133,7 +138,9 @@ public abstract class NettyRemotingAbstract implements RemotingService {
 
     @Override
     public void stop() {
+        ThreadUtils.shutdownGracefully(houseKeepingService, 3000, TimeUnit.MILLISECONDS);
         ThreadUtils.shutdownGracefully(publicExecutor, 2000, TimeUnit.MILLISECONDS);
+        ThreadUtils.shutdownGracefully(asyncHandlerExecutor, 2000, TimeUnit.MILLISECONDS);
         ThreadUtils.shutdownGracefully(channelEventExecutor);
     }
 
@@ -234,16 +241,12 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         channel.writeAndFlush(msg);
     }
 
-    public ExecutorService getCallbackExecutor() {
-        return this.publicExecutor;
-    }
-
     /**
      * Execute callback in callback executor. If callback executor is null, run directly in current thread
      */
     private void executeAsyncHandler(final ResponseFuture responseFuture) {
         boolean runInThisThread = false;
-        ExecutorService executor = this.getCallbackExecutor();
+        ExecutorService executor = asyncHandlerExecutor;
         if (executor != null) {
             try {
                 executor.submit(new Runnable() {
@@ -549,10 +552,10 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                             case IDLE:
                                 listener.onChannelIdle(channel);
                                 break;
-                            case INACTIVE:
+                            case CLOSE:
                                 listener.onChannelClose(channel);
                                 break;
-                            case ACTIVE:
+                            case CONNECT:
                                 listener.onChannelConnect(channel);
                                 break;
                             case EXCEPTION:
@@ -571,7 +574,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
 
     }
 
-    protected class EventDispatcher extends SimpleChannelInboundHandler<RemotingCommand> {
+    protected class RemotingCommandDispatcher extends SimpleChannelInboundHandler<RemotingCommand> {
 
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, RemotingCommand msg) throws Exception {

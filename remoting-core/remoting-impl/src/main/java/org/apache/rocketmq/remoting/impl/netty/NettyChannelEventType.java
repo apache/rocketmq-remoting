@@ -18,8 +18,8 @@
 package org.apache.rocketmq.remoting.impl.netty;
 
 public enum NettyChannelEventType {
-    ACTIVE,
-    INACTIVE,
+    CONNECT,
+    CLOSE,
     IDLE,
     EXCEPTION
 }

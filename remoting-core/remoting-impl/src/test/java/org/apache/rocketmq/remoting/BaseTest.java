@@ -43,7 +43,8 @@ public class BaseTest {
         ThreadUtils.shutdownGracefully(executor, 5, TimeUnit.SECONDS);
     }
 
-    protected void runInThreads(final Runnable runnable, int threadsNum, int timeoutMillis) throws InterruptedException {
+    protected void runInThreads(final Runnable runnable, int threadsNum,
+        int timeoutMillis) throws InterruptedException {
         final Semaphore semaphore = new Semaphore(0);
 
         runInThreads(new Runnable() {

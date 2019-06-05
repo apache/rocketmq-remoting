@@ -29,12 +29,12 @@ public class CodecHelper {
     // + RemarkLen(2) + PropertiesSize(2) + PayloadLen(4);
     public final static int MIN_PROTOCOL_LEN = 1 + 4 + 2 + 2 + 4 + 1 + 2 + 2 + 2 + 4;
     public final static byte PROTOCOL_MAGIC = 0x14;
-    private final static char PROPERTY_SEPARATOR = '\n';
-    private final static Charset REMOTING_CHARSET = Charset.forName("UTF-8");
     final static int REMARK_MAX_LEN = Short.MAX_VALUE;
     final static int PROPERTY_MAX_LEN = 524288; // 512KB
     final static int PAYLOAD_MAX_LEN = 16777216; // 16MB
     public final static int PACKET_MAX_LEN = MIN_PROTOCOL_LEN + REMARK_MAX_LEN + PROPERTY_MAX_LEN + PAYLOAD_MAX_LEN;
+    private final static char PROPERTY_SEPARATOR = '\n';
+    private final static Charset REMOTING_CHARSET = Charset.forName("UTF-8");
 
     public static void encodeCommand(final RemotingCommand command, final ByteBufferWrapper out) {
         out.writeByte(PROTOCOL_MAGIC);

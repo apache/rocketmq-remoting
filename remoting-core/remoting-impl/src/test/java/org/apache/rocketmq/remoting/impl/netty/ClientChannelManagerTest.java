@@ -26,7 +26,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.concurrent.TimeUnit;
 import org.apache.rocketmq.remoting.BaseTest;
-import org.apache.rocketmq.remoting.config.RemotingConfig;
+import org.apache.rocketmq.remoting.config.RemotingClientConfig;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -60,7 +60,7 @@ public class ClientChannelManagerTest extends BaseTest {
         when(channel.close()).thenReturn(channelPromise);
         when(channel.remoteAddress()).thenReturn(new InetSocketAddress(8080));
 
-        channelManager = new ClientChannelManager(clientBootstrap, new RemotingConfig());
+        channelManager = new ClientChannelManager(clientBootstrap, new RemotingClientConfig());
     }
 
     @Test

@@ -39,12 +39,11 @@ import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.EventExecutorGroup;
 import java.net.InetSocketAddress;
-import java.util.concurrent.TimeUnit;
 import org.apache.rocketmq.remoting.api.AsyncHandler;
 import org.apache.rocketmq.remoting.api.RemotingServer;
 import org.apache.rocketmq.remoting.api.channel.RemotingChannel;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
-import org.apache.rocketmq.remoting.config.RemotingConfig;
+import org.apache.rocketmq.remoting.config.RemotingServerConfig;
 import org.apache.rocketmq.remoting.external.ThreadUtils;
 import org.apache.rocketmq.remoting.impl.channel.NettyChannelImpl;
 import org.apache.rocketmq.remoting.impl.netty.handler.Decoder;
@@ -52,7 +51,7 @@ import org.apache.rocketmq.remoting.impl.netty.handler.Encoder;
 import org.apache.rocketmq.remoting.internal.JvmUtils;
 
 public class NettyRemotingServer extends NettyRemotingAbstract implements RemotingServer {
-    private final RemotingConfig serverConfig;
+    private final RemotingServerConfig serverConfig;
 
     private final ServerBootstrap serverBootstrap;
     private final EventLoopGroup bossGroup;
@@ -62,7 +61,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
 
     private int port;
 
-    public NettyRemotingServer(final RemotingConfig serverConfig) {
+    public NettyRemotingServer(final RemotingServerConfig serverConfig) {
         super(serverConfig);
 
         this.serverBootstrap = new ServerBootstrap();
@@ -107,7 +106,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                         serverConfig.getConnectionChannelWriterIdleSeconds(),
                         serverConfig.getConnectionChannelIdleSeconds()),
                     new ServerConnectionHandler(),
-                    new EventDispatcher());
+                    new RemotingCommandDispatcher());
             }
         });
 
@@ -122,10 +121,6 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
     @Override
     public void stop() {
         try {
-            ThreadUtils.shutdownGracefully(houseKeepingService, 3000, TimeUnit.MILLISECONDS);
-
-            ThreadUtils.shutdownGracefully(channelEventExecutor);
-
             this.bossGroup.shutdownGracefully().syncUninterruptibly();
 
             this.ioGroup.shutdownGracefully().syncUninterruptibly();
@@ -160,11 +155,11 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
             bootstrap.option(ChannelOption.SO_REUSEADDR, serverConfig.isTcpSoReuseAddress()).
                 childOption(ChannelOption.SO_KEEPALIVE, serverConfig.isTcpSoKeepAlive()).
                 childOption(ChannelOption.TCP_NODELAY, serverConfig.isTcpSoNoDelay()).
-                option(ChannelOption.CONNECT_TIMEOUT_MILLIS, serverConfig.getTcpSoTimeout());
-        }
+                option(ChannelOption.CONNECT_TIMEOUT_MILLIS, serverConfig.getTcpSoTimeoutMillis());
 
-        if (serverConfig.isServerPooledBytebufAllocatorEnable()) {
-            bootstrap.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
+            if (serverConfig.isServerPooledBytebufAllocatorEnable()) {
+                bootstrap.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
+            }
         }
     }
 
@@ -194,28 +189,32 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
     private class ServerConnectionHandler extends ChannelDuplexHandler {
         @Override
         public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
+            LOG.info("Channel {} registered, remote address {}.", ctx.channel(), ctx.channel().remoteAddress());
             super.channelRegistered(ctx);
         }
 
         @Override
         public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
+            LOG.info("Channel {} unregistered, remote address {}.", ctx.channel(), ctx.channel().remoteAddress());
             super.channelUnregistered(ctx);
         }
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception {
+            LOG.info("Channel {} became active, remote address {}.", ctx.channel(), ctx.channel().remoteAddress());
             super.channelActive(ctx);
-            putNettyEvent(new NettyChannelEvent(NettyChannelEventType.ACTIVE, ctx.channel()));
+            putNettyEvent(new NettyChannelEvent(NettyChannelEventType.CONNECT, ctx.channel()));
         }
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+            LOG.info("Channel {} became inactive, remote address {}.", ctx.channel(), ctx.channel().remoteAddress());
             super.channelInactive(ctx);
-            putNettyEvent(new NettyChannelEvent(NettyChannelEventType.INACTIVE, ctx.channel()));
+            putNettyEvent(new NettyChannelEvent(NettyChannelEventType.CLOSE, ctx.channel()));
         }
 
         @Override
-        public void userEventTriggered(final ChannelHandlerContext ctx, Object evt) throws Exception {
+        public void userEventTriggered(final ChannelHandlerContext ctx, Object evt) {
             if (evt instanceof IdleStateEvent) {
                 final IdleStateEvent event = (IdleStateEvent) evt;
                 if (event.state().equals(IdleState.ALL_IDLE)) {
@@ -233,9 +232,9 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         }
 
         @Override
-        public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
+        public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) {
+            LOG.info("Close channel {} because of error {} ", ctx.channel(), cause);
             putNettyEvent(new NettyChannelEvent(NettyChannelEventType.EXCEPTION, ctx.channel(), cause));
-
             ctx.channel().close().addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {

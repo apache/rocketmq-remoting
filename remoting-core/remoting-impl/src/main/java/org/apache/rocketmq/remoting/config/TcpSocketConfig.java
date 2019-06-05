@@ -23,14 +23,14 @@ package org.apache.rocketmq.remoting.config;
  * @see java.net.SocketOptions
  */
 public class TcpSocketConfig {
-    private boolean tcpSoReuseAddress;
-    private boolean tcpSoKeepAlive;
-    private boolean tcpSoNoDelay;
-    private int tcpSoSndBufSize;  // see /proc/sys/net/ipv4/tcp_rmem
-    private int tcpSoRcvBufSize;  // see /proc/sys/net/ipv4/tcp_wmem
-    private int tcpSoBacklogSize;
-    private int tcpSoLinger;
-    private int tcpSoTimeout;
+    private boolean tcpSoReuseAddress = true;
+    private boolean tcpSoKeepAlive = false;
+    private boolean tcpSoNoDelay = true;
+    private int tcpSoSndBufSize = 65535;  // see /proc/sys/net/ipv4/tcp_rmem
+    private int tcpSoRcvBufSize = 65535;  // see /proc/sys/net/ipv4/tcp_wmem
+    private int tcpSoBacklogSize = 1024;
+    private int tcpSoLinger = -1;
+    private int tcpSoTimeoutMillis = 3000;
 
     public boolean isTcpSoReuseAddress() {
         return tcpSoReuseAddress;
@@ -88,11 +88,11 @@ public class TcpSocketConfig {
         this.tcpSoLinger = tcpSoLinger;
     }
 
-    public int getTcpSoTimeout() {
-        return tcpSoTimeout;
+    public int getTcpSoTimeoutMillis() {
+        return tcpSoTimeoutMillis;
     }
 
-    public void setTcpSoTimeout(final int tcpSoTimeout) {
-        this.tcpSoTimeout = tcpSoTimeout;
+    public void setTcpSoTimeoutMillis(final int tcpSoTimeoutMillis) {
+        this.tcpSoTimeoutMillis = tcpSoTimeoutMillis;
     }
 }

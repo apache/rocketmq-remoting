@@ -37,18 +37,16 @@ import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.EventExecutorGroup;
 import java.net.SocketAddress;
-import java.util.concurrent.TimeUnit;
 import org.apache.rocketmq.remoting.api.AsyncHandler;
 import org.apache.rocketmq.remoting.api.RemotingClient;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
 import org.apache.rocketmq.remoting.api.command.TrafficType;
 import org.apache.rocketmq.remoting.api.exception.RemoteConnectFailureException;
 import org.apache.rocketmq.remoting.api.exception.RemoteTimeoutException;
-import org.apache.rocketmq.remoting.config.RemotingConfig;
+import org.apache.rocketmq.remoting.config.RemotingClientConfig;
 import org.apache.rocketmq.remoting.external.ThreadUtils;
 import org.apache.rocketmq.remoting.impl.netty.handler.Decoder;
 import org.apache.rocketmq.remoting.impl.netty.handler.Encoder;
-import org.apache.rocketmq.remoting.impl.netty.handler.ExceptionHandler;
 import org.apache.rocketmq.remoting.internal.JvmUtils;
 
 public class NettyRemotingClient extends NettyRemotingAbstract implements RemotingClient {
@@ -56,21 +54,21 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
     private final EventLoopGroup ioGroup;
     private final Class<? extends SocketChannel> socketChannelClass;
 
-    private final RemotingConfig clientConfig;
+    private final RemotingClientConfig clientConfig;
 
     private EventExecutorGroup workerGroup;
     private ClientChannelManager clientChannelManager;
 
-    public NettyRemotingClient(final RemotingConfig clientConfig) {
+    public NettyRemotingClient(final RemotingClientConfig clientConfig) {
         super(clientConfig);
         this.clientConfig = clientConfig;
 
         if (JvmUtils.isLinux() && this.clientConfig.isClientNativeEpollEnable()) {
-            this.ioGroup = new EpollEventLoopGroup(clientConfig.getClientWorkerThreads(), ThreadUtils.newGenericThreadFactory("NettyClientEpollIoThreads",
+            this.ioGroup = new EpollEventLoopGroup(clientConfig.getClientIoThreads(), ThreadUtils.newGenericThreadFactory("NettyClientEpollIoThreads",
                 clientConfig.getClientWorkerThreads()));
             socketChannelClass = EpollSocketChannel.class;
         } else {
-            this.ioGroup = new NioEventLoopGroup(clientConfig.getClientWorkerThreads(), ThreadUtils.newGenericThreadFactory("NettyClientNioIoThreads",
+            this.ioGroup = new NioEventLoopGroup(clientConfig.getClientIoThreads(), ThreadUtils.newGenericThreadFactory("NettyClientNioIoThreads",
                 clientConfig.getClientWorkerThreads()));
             socketChannelClass = NioSocketChannel.class;
         }
@@ -88,15 +86,14 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
         this.clientBootstrap.group(this.ioGroup).channel(socketChannelClass)
             .handler(new ChannelInitializer<SocketChannel>() {
                 @Override
-                public void initChannel(SocketChannel ch) throws Exception {
+                public void initChannel(SocketChannel ch) {
                     ch.pipeline().addLast(workerGroup,
                         new Decoder(),
                         new Encoder(),
                         new IdleStateHandler(clientConfig.getConnectionChannelReaderIdleSeconds(),
                             clientConfig.getConnectionChannelWriterIdleSeconds(), clientConfig.getConnectionChannelIdleSeconds()),
                         new ClientConnectionHandler(),
-                        new EventDispatcher(),
-                        new ExceptionHandler());
+                        new RemotingCommandDispatcher());
                 }
             });
 
@@ -108,13 +105,9 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
     @Override
     public void stop() {
         try {
-            ThreadUtils.shutdownGracefully(houseKeepingService, 3000, TimeUnit.MILLISECONDS);
-
             clientChannelManager.clear();
 
             this.ioGroup.shutdownGracefully();
-
-            ThreadUtils.shutdownGracefully(channelEventExecutor);
 
             this.workerGroup.shutdownGracefully();
         } catch (Exception e) {
@@ -126,10 +119,6 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
 
     private void applyOptions(Bootstrap bootstrap) {
         if (null != clientConfig) {
-            if (clientConfig.getTcpSoLinger() > 0) {
-                bootstrap.option(ChannelOption.SO_LINGER, clientConfig.getTcpSoLinger());
-            }
-
             if (clientConfig.getTcpSoSndBufSize() > 0) {
                 bootstrap.option(ChannelOption.SO_SNDBUF, clientConfig.getTcpSoSndBufSize());
             }
@@ -137,10 +126,9 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
                 bootstrap.option(ChannelOption.SO_RCVBUF, clientConfig.getTcpSoRcvBufSize());
             }
 
-            bootstrap.option(ChannelOption.SO_REUSEADDR, clientConfig.isTcpSoReuseAddress()).
-                option(ChannelOption.SO_KEEPALIVE, clientConfig.isTcpSoKeepAlive()).
+            bootstrap.option(ChannelOption.SO_KEEPALIVE, clientConfig.isTcpSoKeepAlive()).
                 option(ChannelOption.TCP_NODELAY, clientConfig.isTcpSoNoDelay()).
-                option(ChannelOption.CONNECT_TIMEOUT_MILLIS, clientConfig.getTcpSoTimeout()).
+                option(ChannelOption.CONNECT_TIMEOUT_MILLIS, clientConfig.getTcpSoTimeoutMillis()).
                 option(ChannelOption.WRITE_BUFFER_WATER_MARK, new WriteBufferWaterMark(clientConfig.getWriteBufLowWaterMark(),
                     clientConfig.getWriteBufHighWaterMark()));
         }
@@ -206,7 +194,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
             LOG.info("Connected from {} to {}.", localAddress, remoteAddress);
             super.connect(ctx, remoteAddress, localAddress, promise);
 
-            putNettyEvent(new NettyChannelEvent(NettyChannelEventType.ACTIVE, ctx.channel()));
+            putNettyEvent(new NettyChannelEvent(NettyChannelEventType.CONNECT, ctx.channel()));
         }
 
         @Override
@@ -217,7 +205,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
 
             super.disconnect(ctx, promise);
 
-            putNettyEvent(new NettyChannelEvent(NettyChannelEventType.INACTIVE, ctx.channel()));
+            putNettyEvent(new NettyChannelEvent(NettyChannelEventType.CLOSE, ctx.channel()));
         }
 
         @Override
@@ -228,11 +216,11 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
 
             super.close(ctx, promise);
 
-            putNettyEvent(new NettyChannelEvent(NettyChannelEventType.INACTIVE, ctx.channel()));
+            putNettyEvent(new NettyChannelEvent(NettyChannelEventType.CLOSE, ctx.channel()));
         }
 
         @Override
-        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
             if (evt instanceof IdleStateEvent) {
                 IdleStateEvent event = (IdleStateEvent) evt;
                 if (event.state().equals(IdleState.ALL_IDLE)) {
@@ -246,7 +234,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
         }
 
         @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             LOG.info("Close channel {} because of error {} ", ctx.channel(), cause);
             NettyRemotingClient.this.clientChannelManager.closeChannel(ctx.channel());
             putNettyEvent(new NettyChannelEvent(NettyChannelEventType.EXCEPTION, ctx.channel()));

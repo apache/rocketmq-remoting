@@ -52,7 +52,6 @@ public class EncoderTest extends BaseTest {
         assertEquals(request, decodedRequest);
     }
 
-
     @Test
     public void encode_LenOverLimit_ChannelClosed() {
         EmbeddedChannel channel = new EmbeddedChannel(new Encoder());

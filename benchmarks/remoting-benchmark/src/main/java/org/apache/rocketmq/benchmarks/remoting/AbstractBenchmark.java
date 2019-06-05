@@ -21,12 +21,38 @@ import org.apache.rocketmq.remoting.RemotingBootstrapFactory;
 import org.apache.rocketmq.remoting.api.RemotingClient;
 import org.apache.rocketmq.remoting.api.RemotingServer;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
-import org.apache.rocketmq.remoting.config.RemotingConfig;
+import org.apache.rocketmq.remoting.config.RemotingClientConfig;
+import org.apache.rocketmq.remoting.config.RemotingServerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class AbstractBenchmark {
     protected static final Logger LOG = LoggerFactory.getLogger(AbstractBenchmark.class);
+
+    public static void main(String[] args) throws InterruptedException {
+        RemotingServer server = RemotingBootstrapFactory.createRemotingServer(new RemotingServerConfig());
+
+        server.registerRequestProcessor((short) 1, (channel, request) -> {
+            RemotingCommand response = server.commandFactory().createResponse(request);
+            response.payload("zhouxinyu".getBytes());
+            System.out.println(new String(request.payload()));
+            return response;
+        });
+        server.start();
+
+        RemotingClient client = RemotingBootstrapFactory.createRemotingClient(new RemotingClientConfig());
+        client.start();
+
+        RemotingCommand request = client.commandFactory().createRequest();
+        request.cmdCode((short) 1);
+        request.cmdVersion((short) 1);
+        request.payload("hello".getBytes());
+        RemotingCommand response = client.invoke("127.0.0.1:8888", request, 3000);
+        System.out.println(new String(response.payload()));
+
+        client.stop();
+        server.stop();
+    }
 
     /**
      * Standard message sizes.
@@ -35,6 +61,7 @@ public class AbstractBenchmark {
         SMALL(16), MEDIUM(1024), LARGE(65536), JUMBO(1048576);
 
         private final int bytes;
+
         MessageSize(int bytes) {
             this.bytes = bytes;
         }
@@ -49,30 +76,5 @@ public class AbstractBenchmark {
      */
     public enum ChannelType {
         NIO, LOCAL;
-    }
-
-    public static void main(String[] args) throws InterruptedException {
-        RemotingServer server = RemotingBootstrapFactory.createRemotingServer(new RemotingConfig());
-
-        server.registerRequestProcessor((short) 1, (channel, request) -> {
-            RemotingCommand response = server.commandFactory().createResponse(request);
-            response.payload("zhouxinyu".getBytes());
-            System.out.println(new String(request.payload()));
-            return response;
-        });
-        server.start();
-
-        RemotingClient client = RemotingBootstrapFactory.createRemotingClient(new RemotingConfig());
-        client.start();
-
-        RemotingCommand request = client.commandFactory().createRequest();
-        request.cmdCode((short) 1);
-        request.cmdVersion((short) 1);
-        request.payload("hello".getBytes());
-        RemotingCommand response = client.invoke("127.0.0.1:8888", request, 3000);
-        System.out.println(new String(response.payload()));
-
-        client.stop();
-        server.stop();
     }
 }

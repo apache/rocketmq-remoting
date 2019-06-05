@@ -19,7 +19,8 @@ package org.apache.rocketmq.remoting;
 
 import java.util.Properties;
 import org.apache.rocketmq.remoting.api.RemotingClient;
-import org.apache.rocketmq.remoting.config.RemotingConfig;
+import org.apache.rocketmq.remoting.config.RemotingClientConfig;
+import org.apache.rocketmq.remoting.config.RemotingServerConfig;
 import org.apache.rocketmq.remoting.impl.netty.NettyRemotingClient;
 import org.apache.rocketmq.remoting.impl.netty.NettyRemotingServer;
 import org.apache.rocketmq.remoting.internal.BeanUtils;
@@ -30,33 +31,33 @@ import org.jetbrains.annotations.NotNull;
  * Remoting Bootstrap entrance.
  */
 public final class RemotingBootstrapFactory {
-    public static RemotingClient createRemotingClient(@NotNull final String fileName) {
-        Properties prop = PropertyUtils.loadProps(fileName);
-        RemotingConfig config = BeanUtils.populate(prop, RemotingConfig.class);
+    public static RemotingClient createRemotingClient(@NotNull final RemotingClientConfig config) {
         return new NettyRemotingClient(config);
     }
 
-    public static RemotingClient createRemotingClient(@NotNull final RemotingConfig config) {
+    public static RemotingClient createRemotingClient(@NotNull final String fileName) {
+        Properties prop = PropertyUtils.loadProps(fileName);
+        RemotingClientConfig config = BeanUtils.populate(prop, RemotingClientConfig.class);
         return new NettyRemotingClient(config);
     }
 
     public static RemotingClient createRemotingClient(@NotNull final Properties properties) {
-        RemotingConfig config = BeanUtils.populate(properties, RemotingConfig.class);
+        RemotingClientConfig config = BeanUtils.populate(properties, RemotingClientConfig.class);
         return new NettyRemotingClient(config);
     }
 
     public static NettyRemotingServer createRemotingServer(@NotNull final String fileName) {
         Properties prop = PropertyUtils.loadProps(fileName);
-        RemotingConfig config = BeanUtils.populate(prop, RemotingConfig.class);
+        RemotingServerConfig config = BeanUtils.populate(prop, RemotingServerConfig.class);
         return new NettyRemotingServer(config);
     }
 
     public static NettyRemotingServer createRemotingServer(@NotNull final Properties properties) {
-        RemotingConfig config = BeanUtils.populate(properties, RemotingConfig.class);
+        RemotingServerConfig config = BeanUtils.populate(properties, RemotingServerConfig.class);
         return new NettyRemotingServer(config);
     }
 
-    public static NettyRemotingServer createRemotingServer(@NotNull final RemotingConfig config) {
+    public static NettyRemotingServer createRemotingServer(@NotNull final RemotingServerConfig config) {
         return new NettyRemotingServer(config);
     }
 }

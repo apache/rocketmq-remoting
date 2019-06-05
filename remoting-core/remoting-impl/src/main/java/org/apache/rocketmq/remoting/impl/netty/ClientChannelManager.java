@@ -28,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import org.apache.rocketmq.remoting.config.RemotingConfig;
+import org.apache.rocketmq.remoting.config.RemotingClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,10 +41,10 @@ public class ClientChannelManager {
     final ConcurrentHashMap<String, ChannelWrapper> channelTables = new ConcurrentHashMap<>();
     private final Lock lockChannelTables = new ReentrantLock();
     private final Bootstrap clientBootstrap;
-    private final RemotingConfig clientConfig;
+    private final RemotingClientConfig clientConfig;
 
     ClientChannelManager(final Bootstrap bootstrap,
-        final RemotingConfig config) {
+        final RemotingClientConfig config) {
         clientBootstrap = bootstrap;
         clientConfig = config;
     }
@@ -106,7 +106,7 @@ public class ClientChannelManager {
 
         if (cw != null) {
             ChannelFuture channelFuture = cw.getChannelFuture();
-            if (channelFuture.awaitUninterruptibly(this.clientConfig.getClientConnectionFutureAwaitTimeoutMillis())) {
+            if (channelFuture.awaitUninterruptibly(this.clientConfig.getConnectTimeoutMillis())) {
                 if (cw.isActive()) {
                     LOG.info("createChannel: connect remote host[{}] success, {}", addr, channelFuture.toString());
                     return cw.getChannel();
@@ -115,7 +115,7 @@ public class ClientChannelManager {
                     this.closeChannel(addr, cw.getChannel());
                 }
             } else {
-                LOG.warn("createChannel: connect remote host[{}] timeout {}ms, {}, and destroy the channel", addr, this.clientConfig.getClientConnectionFutureAwaitTimeoutMillis(),
+                LOG.warn("createChannel: connect remote host[{}] timeout {}ms, {}, and destroy the channel", addr, this.clientConfig.getConnectTimeoutMillis(),
                     channelFuture.toString());
                 this.closeChannel(addr, cw.getChannel());
             }
