@@ -33,7 +33,5 @@ public interface RemotingService extends ConnectionService, ObjectLifecycle {
 
     Pair<RequestProcessor, ExecutorService> processor(short requestCode);
 
-    String remotingInstanceId();
-
     RemotingCommandFactory commandFactory();
 }

@@ -58,20 +58,42 @@ import org.apache.rocketmq.remoting.impl.channel.NettyChannelImpl;
 import org.apache.rocketmq.remoting.impl.command.RemotingCommandFactoryImpl;
 import org.apache.rocketmq.remoting.impl.command.RemotingSysResponseCode;
 import org.apache.rocketmq.remoting.internal.RemotingUtil;
-import org.apache.rocketmq.remoting.internal.UIDGenerator;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public abstract class NettyRemotingAbstract implements RemotingService {
+    /**
+     * Remoting logger instance.
+     */
     protected static final Logger LOG = LoggerFactory.getLogger(NettyRemotingAbstract.class);
+
+    /**
+     * Executor to feed netty events to user defined {@link ChannelEventListener}.
+     */
     protected final ChannelEventExecutor channelEventExecutor = new ChannelEventExecutor("ChannelEventExecutor");
+
+    /**
+     * Semaphore to limit maximum number of on-going one-way requests, which protects system memory footprint.
+     */
     private final Semaphore semaphoreOneway;
+
+    /**
+     * Semaphore to limit maximum number of on-going asynchronous requests, which protects system memory footprint.
+     */
     private final Semaphore semaphoreAsync;
+
+    /**
+     * This map caches all on-going requests.
+     */
     private final Map<Integer, ResponseFuture> ackTables = new ConcurrentHashMap<Integer, ResponseFuture>(256);
+
+    /**
+     * This container holds all processors per request code, aka, for each incoming request, we may look up the
+     * responding processor in this map to handle the request.
+     */
     private final Map<Short, Pair<RequestProcessor, ExecutorService>> processorTables = new ConcurrentHashMap<>();
     private final RemotingCommandFactory remotingCommandFactory;
-    private final String remotingInstanceId = UIDGenerator.instance().createUID();
 
     private final ExecutorService publicExecutor;
     private final ExecutorService asyncHandlerExecutor;
@@ -498,17 +520,8 @@ public abstract class NettyRemotingAbstract implements RemotingService {
     }
 
     @Override
-    public String remotingInstanceId() {
-        return this.getRemotingInstanceId();
-    }
-
-    @Override
     public RemotingCommandFactory commandFactory() {
         return this.remotingCommandFactory;
-    }
-
-    public String getRemotingInstanceId() {
-        return remotingInstanceId;
     }
 
     @Override
