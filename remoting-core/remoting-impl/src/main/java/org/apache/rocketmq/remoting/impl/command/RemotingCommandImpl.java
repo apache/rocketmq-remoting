@@ -23,6 +23,7 @@ import java.util.Map;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringExclude;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
 import org.apache.rocketmq.remoting.api.command.TrafficType;
@@ -36,7 +37,11 @@ public class RemotingCommandImpl implements RemotingCommand {
     private TrafficType trafficType = TrafficType.REQUEST_SYNC;
     private short opCode = RemotingSysResponseCode.SUCCESS;
     private String remark = "";
+
+    @ToStringExclude
     private Map<String, String> properties = new HashMap<>();
+
+    @ToStringExclude
     private byte[] payload;
 
     protected RemotingCommandImpl() {
@@ -139,6 +144,6 @@ public class RemotingCommandImpl implements RemotingCommand {
 
     @Override
     public String toString() {
-        return ToStringBuilder.reflectionToString(this, ToStringStyle.SIMPLE_STYLE);
+        return ToStringBuilder.reflectionToString(this, ToStringStyle.NO_CLASS_NAME_STYLE);
     }
 }

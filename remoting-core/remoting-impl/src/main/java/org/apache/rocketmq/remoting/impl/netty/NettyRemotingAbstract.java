@@ -43,6 +43,7 @@ import org.apache.rocketmq.remoting.api.command.RemotingCommand;
 import org.apache.rocketmq.remoting.api.command.RemotingCommandFactory;
 import org.apache.rocketmq.remoting.api.command.TrafficType;
 import org.apache.rocketmq.remoting.api.exception.RemoteAccessException;
+import org.apache.rocketmq.remoting.api.exception.RemoteRuntimeException;
 import org.apache.rocketmq.remoting.api.exception.RemoteTimeoutException;
 import org.apache.rocketmq.remoting.api.interceptor.Interceptor;
 import org.apache.rocketmq.remoting.api.interceptor.InterceptorGroup;
@@ -58,7 +59,6 @@ import org.apache.rocketmq.remoting.impl.channel.NettyChannelImpl;
 import org.apache.rocketmq.remoting.impl.command.RemotingCommandFactoryImpl;
 import org.apache.rocketmq.remoting.impl.command.RemotingSysResponseCode;
 import org.apache.rocketmq.remoting.internal.RemotingUtil;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,12 +93,35 @@ public abstract class NettyRemotingAbstract implements RemotingService {
      * responding processor in this map to handle the request.
      */
     private final Map<Short, Pair<RequestProcessor, ExecutorService>> processorTables = new ConcurrentHashMap<>();
+
+    /**
+     * This factory provides methods to create RemotingCommand.
+     */
     private final RemotingCommandFactory remotingCommandFactory;
 
+    /**
+     * Executor to execute RequestProcessor without specific executor.
+     */
     private final ExecutorService publicExecutor;
+
+    /**
+     * Invoke the async handler in this executor when process response.
+     */
     private final ExecutorService asyncHandlerExecutor;
+
+    /**
+     * This scheduled executor provides the ability to govern on-going response table.
+     */
     protected ScheduledExecutorService houseKeepingService = ThreadUtils.newSingleThreadScheduledExecutor("HouseKeepingService", true);
+
+    /**
+     * Provides custom interceptor at the occurrence of beforeRequest and afterResponseReceived event.
+     */
     private InterceptorGroup interceptorGroup = new InterceptorGroup();
+
+    /**
+     * Provides listener mechanism to handle netty channel events.
+     */
     private ChannelEventListenerGroup channelEventListenerGroup = new ChannelEventListenerGroup();
 
     NettyRemotingAbstract(RemotingConfig remotingConfig) {
@@ -110,7 +133,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
 
         this.asyncHandlerExecutor = ThreadUtils.newFixedThreadPool(
             remotingConfig.getAsyncHandlerExecutorThreads(),
-            10000, "Remoting-PublicExecutor", true);
+            10000, "Remoting-AsyncExecutor", true);
         this.remotingCommandFactory = new RemotingCommandFactoryImpl();
     }
 
@@ -144,8 +167,8 @@ public abstract class NettyRemotingAbstract implements RemotingService {
             ResponseFuture rf = this.ackTables.remove(requestID);
 
             if (rf != null) {
-                LOG.warn("remove timeout request {} ", rf);
-                rf.setCause(new RemoteTimeoutException(rf.getRemoteAddr(), rf.getTimeoutMillis()));
+                LOG.warn("Removes timeout request {} ", rf.getRequestCommand());
+                rf.setCause(new RemoteTimeoutException(String.format("Request to %s timeout", rf.getRemoteAddr()), rf.getTimeoutMillis()));
                 executeAsyncHandler(rf);
             }
         }
@@ -153,6 +176,8 @@ public abstract class NettyRemotingAbstract implements RemotingService {
 
     @Override
     public void start() {
+        startUpHouseKeepingService();
+
         if (this.channelEventListenerGroup.size() > 0) {
             this.channelEventExecutor.start();
         }
@@ -230,11 +255,10 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                 responseFuture.release();
             }
         } else {
-            LOG.warn("request {} from {} has not matched response !", response, RemotingUtil.extractRemoteAddress(ctx.channel()));
+            LOG.warn("Response {} from {} doesn't have a matched request!", response, RemotingUtil.extractRemoteAddress(ctx.channel()));
         }
     }
 
-    @NotNull
     private Runnable buildProcessorTask(final ChannelHandlerContext ctx, final RemotingCommand cmd,
         final Pair<RequestProcessor, ExecutorService> processorExecutorPair, final RemotingChannel channel) {
         return new Runnable() {
@@ -302,7 +326,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         }
     }
 
-    private void requestFail(final int requestID, final Throwable cause) {
+    private void requestFail(final int requestID, final RemoteRuntimeException cause) {
         ResponseFuture responseFuture = ackTables.remove(requestID);
         if (responseFuture != null) {
             responseFuture.setSendRequestOK(false);
@@ -312,7 +336,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         }
     }
 
-    private void requestFail(final ResponseFuture responseFuture, final Throwable cause) {
+    private void requestFail(final ResponseFuture responseFuture, final RemoteRuntimeException cause) {
         responseFuture.setCause(cause);
         executeAsyncHandler(responseFuture);
     }
@@ -368,7 +392,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
 
             ChannelFutureListener listener = new ChannelFutureListener() {
                 @Override
-                public void operationComplete(ChannelFuture f) throws Exception {
+                public void operationComplete(ChannelFuture f) {
                     if (f.isSuccess()) {
                         responseFuture.setSendRequestOK(true);
                         return;
@@ -376,7 +400,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                         responseFuture.setSendRequestOK(false);
 
                         ackTables.remove(requestID);
-                        responseFuture.setCause(f.cause());
+                        responseFuture.setCause(new RemoteAccessException(RemotingUtil.extractRemoteAddress(channel), f.cause()));
                         responseFuture.putResponse(null);
 
                         LOG.warn("Send request command to {} failed !", remoteAddr);
@@ -390,9 +414,10 @@ public abstract class NettyRemotingAbstract implements RemotingService {
 
             if (null == responseCommand) {
                 if (responseFuture.isSendRequestOK()) {
-                    throw new RemoteTimeoutException(RemotingUtil.extractRemoteAddress(channel), timeoutMillis, responseFuture.getCause());
+                    responseFuture.setCause(new RemoteTimeoutException(RemotingUtil.extractRemoteAddress(channel), timeoutMillis));
+                    throw responseFuture.getCause();
                 } else {
-                    throw new RemoteAccessException(RemotingUtil.extractRemoteAddress(channel), responseFuture.getCause());
+                    throw responseFuture.getCause();
                 }
             }
 
@@ -439,14 +464,14 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                             return;
                         }
 
-                        requestFail(requestID, f.cause());
+                        requestFail(requestID, new RemoteAccessException(RemotingUtil.extractRemoteAddress(channel), f.cause()));
                         LOG.warn("Send request command to channel  failed.", remoteAddr);
                     }
                 };
 
                 this.writeAndFlush(channel, request, listener);
             } catch (Exception e) {
-                requestFail(requestID, e);
+                requestFail(requestID, new RemoteAccessException(RemotingUtil.extractRemoteAddress(channel), e));
                 LOG.error("Send request command to channel " + channel + " error !", e);
             }
         } else {
@@ -543,7 +568,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
             if (this.eventQueue.size() <= MAX_SIZE) {
                 this.eventQueue.add(event);
             } else {
-                LOG.warn("event queue size[{}] enough, so drop this event {}", this.eventQueue.size(), event.toString());
+                LOG.warn("Event queue size[{}] meets the limit, so drop this event {}", this.eventQueue.size(), event.toString());
             }
         }
 
@@ -559,7 +584,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                     if (event != null && listener != null) {
                         RemotingChannel channel = new NettyChannelImpl(event.getChannel());
 
-                        LOG.warn("Channel Event, {}", event);
+                        LOG.info("Dispatch received channel event, {}", event);
 
                         switch (event.getType()) {
                             case IDLE:
@@ -572,14 +597,14 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                                 listener.onChannelConnect(channel);
                                 break;
                             case EXCEPTION:
-                                listener.onChannelException(channel);
+                                listener.onChannelException(channel, event.getCause());
                                 break;
                             default:
                                 break;
                         }
                     }
                 } catch (Exception e) {
-                    LOG.error("error", e);
+                    LOG.warn("Exception thrown when dispatching channel event", e);
                     break;
                 }
             }

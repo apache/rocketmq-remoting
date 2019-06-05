@@ -18,11 +18,11 @@
 package org.apache.rocketmq.remoting.api.channel;
 
 public interface ChannelEventListener {
-    void onChannelConnect(final RemotingChannel channel);
+    void onChannelConnect(RemotingChannel channel);
 
-    void onChannelClose(final RemotingChannel channel);
+    void onChannelClose(RemotingChannel channel);
 
-    void onChannelException(final RemotingChannel channel);
+    void onChannelException(RemotingChannel channel, Throwable cause);
 
-    void onChannelIdle(final RemotingChannel channel);
+    void onChannelIdle(RemotingChannel channel);
 }

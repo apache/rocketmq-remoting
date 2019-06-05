@@ -114,8 +114,6 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
 
         ChannelFuture channelFuture = this.serverBootstrap.bind(this.serverConfig.getServerListenPort()).syncUninterruptibly();
         this.port = ((InetSocketAddress) channelFuture.channel().localAddress()).getPort();
-
-        startUpHouseKeepingService();
     }
 
     @Override

@@ -22,12 +22,12 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
-import java.net.InetSocketAddress;
 import org.apache.rocketmq.remoting.api.buffer.ByteBufferWrapper;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
 import org.apache.rocketmq.remoting.api.exception.RemoteCodecException;
 import org.apache.rocketmq.remoting.impl.buffer.NettyByteBufferWrapper;
 import org.apache.rocketmq.remoting.impl.command.CodecHelper;
+import org.apache.rocketmq.remoting.internal.RemotingUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,10 +44,7 @@ public class Encoder extends MessageToByteEncoder<RemotingCommand> {
 
             encode(remotingCommand, wrapper);
         } catch (final RemoteCodecException e) {
-            String remoteAddress = "UnKnown";
-            if (ctx.channel().remoteAddress() instanceof InetSocketAddress) {
-                remoteAddress = ((InetSocketAddress) ctx.channel().remoteAddress()).getAddress().getHostAddress();
-            }
+            String remoteAddress = RemotingUtil.extractRemoteAddress(ctx.channel());
             LOG.error(String.format("Error occurred when encoding command for channel %s", remoteAddress), e);
 
             ctx.channel().close().addListener(new ChannelFutureListener() {

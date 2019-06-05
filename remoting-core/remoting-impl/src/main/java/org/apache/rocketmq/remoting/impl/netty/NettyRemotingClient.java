@@ -98,8 +98,6 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
             });
 
         applyOptions(clientBootstrap);
-
-        startUpHouseKeepingService();
     }
 
     @Override
@@ -237,7 +235,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             LOG.info("Close channel {} because of error {} ", ctx.channel(), cause);
             NettyRemotingClient.this.clientChannelManager.closeChannel(ctx.channel());
-            putNettyEvent(new NettyChannelEvent(NettyChannelEventType.EXCEPTION, ctx.channel()));
+            putNettyEvent(new NettyChannelEvent(NettyChannelEventType.EXCEPTION, ctx.channel(), cause));
         }
     }
 }

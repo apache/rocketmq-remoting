@@ -19,9 +19,16 @@ package org.apache.rocketmq.remoting.internal;
 
 import io.netty.channel.Channel;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 
 public class RemotingUtil {
     public static String extractRemoteAddress(Channel channel) {
-        return ((InetSocketAddress) channel.remoteAddress()).getAddress().getHostAddress();
+        SocketAddress socketAddress = channel.remoteAddress();
+
+        if (socketAddress instanceof InetSocketAddress) {
+            return ((InetSocketAddress) socketAddress).getAddress().getHostAddress();
+        }
+
+        return "Unknown";
     }
 }

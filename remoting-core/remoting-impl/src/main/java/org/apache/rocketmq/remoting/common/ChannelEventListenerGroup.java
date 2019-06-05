@@ -47,9 +47,9 @@ public class ChannelEventListenerGroup {
         }
     }
 
-    public void onChannelException(final RemotingChannel channel) {
+    public void onChannelException(final RemotingChannel channel, final Throwable cause) {
         for (ChannelEventListener listener : listenerList) {
-            listener.onChannelException(channel);
+            listener.onChannelException(channel, cause);
         }
     }
 

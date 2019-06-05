@@ -21,23 +21,32 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringExclude;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.apache.rocketmq.remoting.api.AsyncHandler;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
+import org.apache.rocketmq.remoting.api.exception.RemoteRuntimeException;
 import org.jetbrains.annotations.Nullable;
 
 public class ResponseFuture {
     private final long beginTimestamp = System.currentTimeMillis();
+
+    @ToStringExclude
     private final CountDownLatch countDownLatch = new CountDownLatch(1);
+    @ToStringExclude
     private final AtomicBoolean asyncHandlerExecuted = new AtomicBoolean(false);
 
     private int requestId;
     private long timeoutMillis;
+
+    @ToStringExclude
     private AsyncHandler asyncHandler;
 
     private volatile RemotingCommand responseCommand;
     private volatile boolean sendRequestOK = true;
-    private volatile Throwable cause;
+    private volatile RemoteRuntimeException cause;
+
+    @ToStringExclude
     private SemaphoreReleaseOnlyOnce once;
 
     private RemotingCommand requestCommand;
@@ -108,11 +117,11 @@ public class ResponseFuture {
         return asyncHandler;
     }
 
-    public Throwable getCause() {
+    public RemoteRuntimeException getCause() {
         return cause;
     }
 
-    public void setCause(Throwable cause) {
+    public void setCause(RemoteRuntimeException cause) {
         this.cause = cause;
     }
 
@@ -146,6 +155,6 @@ public class ResponseFuture {
 
     @Override
     public String toString() {
-        return ToStringBuilder.reflectionToString(this, ToStringStyle.MULTI_LINE_STYLE);
+        return ToStringBuilder.reflectionToString(this, ToStringStyle.DEFAULT_STYLE);
     }
 }

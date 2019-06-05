@@ -30,7 +30,7 @@ package org.apache.rocketmq.remoting.api.exception;
  *
  * @since 1.0.0
  */
-public class RemoteAccessException extends NestedRuntimeException {
+public class RemoteAccessException extends RemoteRuntimeException {
     private static final long serialVersionUID = 6280428909532427263L;
 
     /**

@@ -19,7 +19,7 @@ package org.apache.rocketmq.remoting;
 
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -27,11 +27,17 @@ import org.apache.rocketmq.remoting.api.command.RemotingCommand;
 import org.apache.rocketmq.remoting.api.command.TrafficType;
 import org.apache.rocketmq.remoting.external.ThreadUtils;
 import org.apache.rocketmq.remoting.impl.command.RemotingCommandFactoryImpl;
+import org.assertj.core.api.Fail;
 
 public class BaseTest {
-    protected void runInThreads(final Runnable runnable, int threadsNum) {
-        ExecutorService executor = Executors.newFixedThreadPool(threadsNum);
-        for (int i = 0; i < threadsNum; i++) {
+    protected void scheduleInThreads(final Runnable runnable, int periodMillis) {
+        final ScheduledExecutorService executor = ThreadUtils.newSingleThreadScheduledExecutor("UnitTests", true);
+        executor.scheduleAtFixedRate(runnable, 0, periodMillis, TimeUnit.MILLISECONDS);
+    }
+
+    protected void runInThreads(final Runnable runnable, int concurrentNum) {
+        final ExecutorService executor = ThreadUtils.newFixedThreadPool(concurrentNum, 1000, "UnitTests", true);
+        for (int i = 0; i < concurrentNum; i++) {
             executor.submit(new Runnable() {
                 @Override
                 public void run() {
@@ -39,8 +45,6 @@ public class BaseTest {
                 }
             });
         }
-
-        ThreadUtils.shutdownGracefully(executor, 5, TimeUnit.SECONDS);
     }
 
     protected void runInThreads(final Runnable runnable, int threadsNum,
@@ -83,5 +87,45 @@ public class BaseTest {
         }
 
         return command;
+    }
+
+    protected <T> ObjectFuture<T> newObjectFuture(int permits, int timeoutMillis) {
+        return new ObjectFuture<>(permits, timeoutMillis);
+    }
+
+    protected class ObjectFuture<T> {
+        private T object;
+        private Semaphore semaphore;
+        private int permits;
+        private int timeoutMillis;
+
+        public ObjectFuture(int permits, int timeoutMillis) {
+            semaphore = new Semaphore(0);
+            this.permits = permits;
+            this.timeoutMillis = timeoutMillis;
+        }
+
+        public void release() {
+            semaphore.release();
+        }
+
+        public void putObject(T object) {
+            this.object = object;
+        }
+
+        public T getObject() {
+            try {
+                if (!semaphore.tryAcquire(permits, timeoutMillis, TimeUnit.MILLISECONDS)) {
+                    Fail.fail("Get permits failed");
+                }
+            } catch (InterruptedException e) {
+                Fail.fail("Get object failed", e);
+            }
+            return this.object;
+        }
+    }
+
+    public class UnitTestException extends RuntimeException {
+
     }
 }
