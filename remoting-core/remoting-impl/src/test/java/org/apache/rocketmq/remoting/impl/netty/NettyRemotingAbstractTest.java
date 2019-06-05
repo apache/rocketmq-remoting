@@ -199,7 +199,7 @@ public class NettyRemotingAbstractTest extends BaseTest {
 
         remotingAbstract.channelEventExecutor.start();
 
-        assertThat(eventCount.tryAcquire(maxLimit, 1000, TimeUnit.MILLISECONDS)).isTrue();
+        assertThat(eventCount.tryAcquire(maxLimit, 3000, TimeUnit.MILLISECONDS)).isTrue();
 
         assertThat(droppedEvent.tryAcquire(1, 10, TimeUnit.MILLISECONDS)).isFalse();
     }
