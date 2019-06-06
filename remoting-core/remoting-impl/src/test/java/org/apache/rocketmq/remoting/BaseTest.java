@@ -17,6 +17,7 @@
 
 package org.apache.rocketmq.remoting;
 
+import java.io.PrintStream;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -28,8 +29,26 @@ import org.apache.rocketmq.remoting.api.command.TrafficType;
 import org.apache.rocketmq.remoting.external.ThreadUtils;
 import org.apache.rocketmq.remoting.impl.command.RemotingCommandFactoryImpl;
 import org.assertj.core.api.Fail;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.stubbing.Answer;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+
+@RunWith(MockitoJUnitRunner.class)
 public class BaseTest {
+    @Mock
+    protected PrintStream fakeOut;
+
+    @Test
+    public void emptyTest() {
+
+    }
+
     protected void scheduleInThreads(final Runnable runnable, int periodMillis) {
         final ScheduledExecutorService executor = ThreadUtils.newSingleThreadScheduledExecutor("UnitTests", true);
         executor.scheduleAtFixedRate(runnable, 0, periodMillis, TimeUnit.MILLISECONDS);
@@ -93,8 +112,33 @@ public class BaseTest {
         return new ObjectFuture<>(permits, timeoutMillis);
     }
 
+    protected ObjectFuture<String> retrieveStringFromLog(final String targetString) {
+        final ObjectFuture<String> objectFuture = newObjectFuture(1, 3000);
+        final PrintStream originStream = System.err;
+        System.setErr(fakeOut);
+
+        doAnswer(new Answer() {
+            @Override
+            public Object answer(final InvocationOnMock invocation) throws Throwable {
+                Object[] arguments = invocation.getArguments();
+
+                String str = arguments[0].toString();
+
+                if (str.contains(targetString)) {
+                    System.setErr(originStream);
+                    objectFuture.putObject(str);
+                    objectFuture.release();
+                }
+
+                return null;
+            }
+        }).when(fakeOut).println(any(String.class));
+
+        return objectFuture;
+    }
+
     protected class ObjectFuture<T> {
-        private T object;
+        volatile private T object;
         private Semaphore semaphore;
         private int permits;
         private int timeoutMillis;

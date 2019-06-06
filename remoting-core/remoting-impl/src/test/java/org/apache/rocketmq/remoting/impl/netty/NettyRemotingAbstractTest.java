@@ -25,18 +25,26 @@ import io.netty.channel.DefaultChannelPromise;
 import io.netty.channel.DefaultEventLoop;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.embedded.EmbeddedChannel;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import org.apache.rocketmq.remoting.BaseTest;
 import org.apache.rocketmq.remoting.api.AsyncHandler;
+import org.apache.rocketmq.remoting.api.RemotingEndPoint;
 import org.apache.rocketmq.remoting.api.RequestProcessor;
 import org.apache.rocketmq.remoting.api.channel.ChannelEventListener;
 import org.apache.rocketmq.remoting.api.channel.RemotingChannel;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
 import org.apache.rocketmq.remoting.api.exception.RemoteAccessException;
 import org.apache.rocketmq.remoting.api.exception.RemoteTimeoutException;
-import org.apache.rocketmq.remoting.config.RemotingClientConfig;
+import org.apache.rocketmq.remoting.api.exception.SemaphoreExhaustedException;
+import org.apache.rocketmq.remoting.api.interceptor.Interceptor;
+import org.apache.rocketmq.remoting.api.interceptor.RequestContext;
+import org.apache.rocketmq.remoting.api.interceptor.ResponseContext;
+import org.apache.rocketmq.remoting.config.RemotingConfig;
+import org.apache.rocketmq.remoting.external.ThreadUtils;
 import org.apache.rocketmq.remoting.impl.channel.NettyChannelImpl;
+import org.apache.rocketmq.remoting.impl.command.RemotingSysResponseCode;
 import org.apache.rocketmq.remoting.impl.netty.handler.Decoder;
 import org.apache.rocketmq.remoting.impl.netty.handler.Encoder;
 import org.junit.After;
@@ -49,6 +57,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.failBecauseExceptionWasNotThrown;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -65,11 +74,28 @@ public class NettyRemotingAbstractTest extends BaseTest {
 
     private RemotingCommand remotingRequest;
 
+    private RemotingCommand remotingRequestAsync;
+
+    private RemotingCommand remotingRequestOneway;
+
     private short requestCode = 123;
+    private int semaphoreNum = 5;
 
     @Before
     public void setUp() {
-        remotingAbstract = new NettyRemotingAbstract(new RemotingClientConfig()) {
+        RemotingConfig remotingConfig = new RemotingConfig() {
+            @Override
+            public int getOnewayInvokeSemaphore() {
+                return semaphoreNum;
+            }
+
+            @Override
+            public int getAsyncInvokeSemaphore() {
+                return semaphoreNum;
+            }
+        };
+
+        remotingAbstract = new NettyRemotingAbstract(remotingConfig) {
         };
 
         clientChannel = new EmbeddedChannel(new Encoder(), new Decoder(), new SimpleChannelInboundHandler<RemotingCommand>() {
@@ -91,6 +117,14 @@ public class NettyRemotingAbstractTest extends BaseTest {
         remotingRequest = remotingAbstract.commandFactory().createRequest();
         remotingRequest.cmdCode(requestCode);
         remotingRequest.payload("Ping".getBytes());
+
+        remotingRequestAsync = remotingAbstract.commandFactory().createRequest();
+        remotingRequestAsync.cmdCode(requestCode);
+        remotingRequestAsync.payload("Ping".getBytes());
+
+        remotingRequestOneway = remotingAbstract.commandFactory().createRequest();
+        remotingRequestOneway.cmdCode(requestCode);
+        remotingRequestOneway.payload("Ping".getBytes());
 
         // Simulate the tcp stack
         scheduleInThreads(new Runnable() {
@@ -289,6 +323,57 @@ public class NettyRemotingAbstractTest extends BaseTest {
     }
 
     @Test
+    public void invokeAsyncWithInterceptor_SemaphoreExhausted() {
+        registerTimeoutProcessor(1000);
+
+        final ObjectFuture<Throwable> objectFuture = newObjectFuture(1, 10);
+
+        for (int i = 0; i < semaphoreNum; i++) {
+            remotingAbstract.invokeAsyncWithInterceptor(clientChannel, remotingRequest, null, 100);
+        }
+
+        remotingAbstract.invokeAsyncWithInterceptor(clientChannel, remotingRequest, new AsyncHandler() {
+            @Override
+            public void onFailure(final RemotingCommand request, final Throwable cause) {
+                objectFuture.putObject(cause);
+                objectFuture.release();
+            }
+
+            @Override
+            public void onSuccess(final RemotingCommand response) {
+
+            }
+        }, 100);
+
+        assertThat(objectFuture.getObject()).isInstanceOf(SemaphoreExhaustedException.class);
+    }
+
+    @Test
+    public void invokeAsyncWithInterceptor_AccessException() {
+        ChannelPromise channelPromise = new DefaultChannelPromise(mockedClientChannel, new DefaultEventLoop());
+
+        when(mockedClientChannel.writeAndFlush(any(Object.class))).thenReturn(channelPromise);
+        channelPromise.setFailure(new UnitTestException());
+
+        final ObjectFuture<Throwable> objectFuture = newObjectFuture(1, 10);
+
+        remotingAbstract.invokeAsyncWithInterceptor(mockedClientChannel, remotingRequest, new AsyncHandler() {
+            @Override
+            public void onFailure(final RemotingCommand request, final Throwable cause) {
+                objectFuture.putObject(cause);
+                objectFuture.release();
+            }
+
+            @Override
+            public void onSuccess(final RemotingCommand response) {
+
+            }
+        }, 10);
+
+        assertThat(objectFuture.getObject().getCause()).isInstanceOf(UnitTestException.class);
+    }
+
+    @Test
     public void invokeOnewayWithInterceptor_Success() {
         ObjectFuture<RemotingCommand> objectFuture = newObjectFuture(1, 10);
         registerOnewayProcessor(objectFuture);
@@ -300,27 +385,187 @@ public class NettyRemotingAbstractTest extends BaseTest {
     }
 
     @Test
-    public void registerInterceptor() {
+    public void invokeOnewayWithInterceptor_AccessException() {
+        ChannelPromise channelPromise = new DefaultChannelPromise(mockedClientChannel, new DefaultEventLoop());
+
+        when(mockedClientChannel.writeAndFlush(any(Object.class))).thenReturn(channelPromise);
+        channelPromise.setFailure(new UnitTestException());
+
+        String expectedLog = "Send request command to channel null failed !";
+
+        ObjectFuture<String> objectFuture = retrieveStringFromLog(expectedLog);
+
+        remotingAbstract.invokeOnewayWithInterceptor(mockedClientChannel, remotingRequest);
+
+        assertThat(objectFuture.getObject()).contains(expectedLog);
     }
 
     @Test
-    public void registerRequestProcessor() {
-    }
+    public void invokeOnewayWithInterceptor_SemaphoreExhausted() {
+        final ChannelPromise channelPromise = new DefaultChannelPromise(mockedClientChannel, new DefaultEventLoop());
 
-    @Test
-    public void registerRequestProcessor1() {
+        when(mockedClientChannel.writeAndFlush(any(Object.class))).thenReturn(channelPromise);
+
+        for (int i = 0; i < semaphoreNum; i++) {
+            remotingAbstract.invokeOnewayWithInterceptor(mockedClientChannel, remotingRequest);
+        }
+
+        runInThreads(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    TimeUnit.SECONDS.sleep(1);
+                } catch (InterruptedException ignore) {
+                }
+                channelPromise.setSuccess();
+            }
+        }, 1);
+        String expectedLog = "No available oneway semaphore to issue the request";
+        ObjectFuture<String> objectFuture = retrieveStringFromLog(expectedLog);
+
+        remotingAbstract.invokeOnewayWithInterceptor(mockedClientChannel, remotingRequest);
+        assertThat(objectFuture.getObject()).contains(expectedLog);
     }
 
     @Test
     public void unregisterRequestProcessor() {
+        registerNormalProcessor();
+
+        RemotingCommand response = remotingAbstract.invokeWithInterceptor(clientChannel, remotingRequest, 3000);
+        assertThat(new String(response.payload())).isEqualTo("Pong");
+
+        remotingAbstract.unregisterRequestProcessor(requestCode);
+
+        response = remotingAbstract.invokeWithInterceptor(clientChannel, remotingRequest, 3000);
+        assertThat(response.opCode()).isEqualTo(RemotingSysResponseCode.REQUEST_CODE_NOT_SUPPORTED);
     }
 
     @Test
     public void processor() {
+        registerNormalProcessor();
+        RemotingCommand response = remotingAbstract.processor(requestCode).getLeft().processRequest(mock(RemotingChannel.class), remotingRequest);
+        assertThat(new String(response.payload())).isEqualTo("Pong");
+
+        assertThat(remotingAbstract.processor((short) (requestCode + 1))).isNull();
     }
 
     @Test
-    public void registerChannelEventListener() {
+    public void registerRequestProcessor_SpecificExecutor() {
+        ExecutorService executor = ThreadUtils.newSingleThreadExecutor("CustomThread", true);
+
+        remotingAbstract.registerRequestProcessor(requestCode, new RequestProcessor() {
+            @Override
+            public RemotingCommand processRequest(final RemotingChannel channel, final RemotingCommand request) {
+                RemotingCommand response = remotingAbstract.commandFactory().createResponse(request);
+                response.payload(Thread.currentThread().getName().getBytes());
+                return response;
+            }
+        }, executor);
+
+        RemotingCommand response = remotingAbstract.invokeWithInterceptor(clientChannel, remotingRequest, 3000);
+        assertThat(new String(response.payload())).startsWith("CustomThread");
+    }
+
+    @Test
+    public void registerChannelEventListener_ExceptionThrown() {
+        registerNormalProcessor();
+
+        String expectedLog = "Exception thrown when dispatching channel event";
+
+        ObjectFuture<String> objectFuture = retrieveStringFromLog(expectedLog);
+
+        remotingAbstract.registerChannelEventListener(new ChannelEventListener() {
+            @Override
+            public void onChannelConnect(final RemotingChannel channel) {
+                throw new UnitTestException();
+            }
+
+            @Override
+            public void onChannelClose(final RemotingChannel channel) {
+
+            }
+
+            @Override
+            public void onChannelException(final RemotingChannel channel, final Throwable cause) {
+
+            }
+
+            @Override
+            public void onChannelIdle(final RemotingChannel channel) {
+
+            }
+        });
+
+        remotingAbstract.channelEventExecutor.start();
+        remotingAbstract.putNettyEvent(new NettyChannelEvent(NettyChannelEventType.CONNECT, clientChannel));
+
+        assertThat(objectFuture.getObject()).contains(expectedLog);
+    }
+
+    @Test
+    public void registerInterceptor_NoModification() {
+        registerNormalProcessor();
+        final ObjectFuture<RemotingCommand> localRequest = newObjectFuture(1, 100);
+        final ObjectFuture<RemotingCommand> localResponse = newObjectFuture(1, 100);
+
+        final ObjectFuture<RemotingCommand> remoteRequest = newObjectFuture(1, 100);
+        final ObjectFuture<RemotingCommand> remoteResponse = newObjectFuture(1, 100);
+
+        remotingAbstract.registerInterceptor(new Interceptor() {
+            @Override
+            public void beforeRequest(final RequestContext context) {
+                if (context.getRemotingEndPoint() == RemotingEndPoint.REQUEST) {
+                    localRequest.putObject(context.getRequest());
+                    localRequest.release();
+                }
+
+                if (context.getRemotingEndPoint() == RemotingEndPoint.RESPONSE) {
+                    remoteRequest.putObject(context.getRequest());
+                    remoteRequest.release();
+                }
+            }
+
+            @Override
+            public void afterResponseReceived(final ResponseContext context) {
+                if (context.getRemotingEndPoint() == RemotingEndPoint.REQUEST) {
+                    localResponse.putObject(context.getResponse());
+                    localResponse.release();
+                }
+
+                if (context.getRemotingEndPoint() == RemotingEndPoint.RESPONSE) {
+                    remoteResponse.putObject(context.getResponse());
+                    remoteResponse.release();
+                }
+            }
+        });
+
+        RemotingCommand response = remotingAbstract.invokeWithInterceptor(clientChannel, remotingRequest, 3000);
+
+        assertThat(new String(response.payload())).startsWith("Pong");
+
+        assertThat(localRequest.getObject()).isEqualTo(remotingRequest);
+        assertThat(localResponse.getObject()).isEqualTo(response);
+
+        assertThat(remoteRequest.getObject()).isEqualTo(remotingRequest);
+        assertThat(remoteResponse.getObject()).isEqualTo(response);
+
+        remotingAbstract.invokeAsyncWithInterceptor(clientChannel, remotingRequestAsync, null,3000);
+
+        assertThat(localRequest.getObject()).isEqualTo(remotingRequestAsync);
+
+
+        assertThat(localResponse.getObject().requestID()).isEqualTo(remotingRequestAsync.requestID());
+
+        assertThat(remoteRequest.getObject()).isEqualTo(remotingRequestAsync);
+        assertThat(remoteResponse.getObject().requestID()).isEqualTo(remotingRequestAsync.requestID());
+
+        remotingAbstract.invokeOnewayWithInterceptor(clientChannel, remotingRequestOneway);
+
+        assertThat(localRequest.getObject()).isEqualTo(remotingRequestOneway);
+
+        assertThat(remoteRequest.getObject()).isEqualTo(remotingRequestOneway);
+        assertThat(remoteResponse.getObject().requestID()).isEqualTo(remotingRequestOneway.requestID());
+
     }
 
     private void registerTimeoutProcessor(final int timeoutMillis) {

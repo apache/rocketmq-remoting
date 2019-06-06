@@ -45,6 +45,7 @@ import org.apache.rocketmq.remoting.api.command.TrafficType;
 import org.apache.rocketmq.remoting.api.exception.RemoteAccessException;
 import org.apache.rocketmq.remoting.api.exception.RemoteRuntimeException;
 import org.apache.rocketmq.remoting.api.exception.RemoteTimeoutException;
+import org.apache.rocketmq.remoting.api.exception.SemaphoreExhaustedException;
 import org.apache.rocketmq.remoting.api.interceptor.Interceptor;
 import org.apache.rocketmq.remoting.api.interceptor.InterceptorGroup;
 import org.apache.rocketmq.remoting.api.interceptor.RequestContext;
@@ -372,12 +373,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
 
         this.interceptorGroup.beforeRequest(new RequestContext(RemotingEndPoint.REQUEST, remoteAddr, request));
 
-        RemotingCommand responseCommand = this.invoke0(remoteAddr, channel, request, timeoutMillis);
-
-        this.interceptorGroup.afterResponseReceived(new ResponseContext(RemotingEndPoint.REQUEST,
-            RemotingUtil.extractRemoteAddress(channel), request, responseCommand));
-
-        return responseCommand;
+        return this.invoke0(remoteAddr, channel, request, timeoutMillis);
     }
 
     private RemotingCommand invoke0(final String remoteAddr, final Channel channel, final RemotingCommand request,
@@ -432,14 +428,14 @@ public abstract class NettyRemotingAbstract implements RemotingService {
     }
 
     public void invokeAsyncWithInterceptor(final Channel channel, final RemotingCommand request,
-        final AsyncHandler invokeCallback, long timeoutMillis) {
+        final AsyncHandler asyncHandler, long timeoutMillis) {
         request.trafficType(TrafficType.REQUEST_ASYNC);
 
         final String remoteAddr = RemotingUtil.extractRemoteAddress(channel);
 
         this.interceptorGroup.beforeRequest(new RequestContext(RemotingEndPoint.REQUEST, remoteAddr, request));
 
-        this.invokeAsync0(remoteAddr, channel, request, invokeCallback, timeoutMillis);
+        this.invokeAsync0(remoteAddr, channel, request, asyncHandler, timeoutMillis);
     }
 
     private void invokeAsync0(final String remoteAddr, final Channel channel, final RemotingCommand request,
@@ -476,7 +472,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
             }
         } else {
             String info = String.format("No available async semaphore to issue the request request %s", request.toString());
-            requestFail(new ResponseFuture(request.requestID(), timeoutMillis, asyncHandler, null), new RemoteAccessException(info));
+            requestFail(new ResponseFuture(request.requestID(), timeoutMillis, asyncHandler, null), new SemaphoreExhaustedException(info));
             LOG.error(info);
         }
     }
