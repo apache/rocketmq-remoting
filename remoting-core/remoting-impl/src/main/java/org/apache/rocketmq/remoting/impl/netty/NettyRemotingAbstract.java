@@ -228,7 +228,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         try {
             processorExecutorPair.getRight().submit(run);
         } catch (RejectedExecutionException e) {
-            LOG.warn(String.format("Request %s from %s Rejected by server executor %s !", cmd,
+            LOG.warn(String.format("Request %s from %s is rejected by server executor %s !", cmd,
                 RemotingUtil.extractRemoteAddress(ctx.channel()), processorExecutorPair.getRight().toString()));
 
             if (cmd.trafficType() != TrafficType.REQUEST_ONEWAY) {
@@ -302,7 +302,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                         try {
                             responseFuture.executeAsyncHandler();
                         } catch (Throwable e) {
-                            LOG.warn("execute callback in executor exception, and callback throw", e);
+                            LOG.warn("Execute async handler in specific executor exception, ", e);
                         } finally {
                             responseFuture.release();
                         }
@@ -310,7 +310,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                 });
             } catch (Throwable e) {
                 runInThisThread = true;
-                LOG.warn("execute callback in executor exception, maybe executor busy", e);
+                LOG.warn("Execute async handler in executor exception, maybe the executor is busy now", e);
             }
         } else {
             runInThisThread = true;
@@ -320,7 +320,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
             try {
                 responseFuture.executeAsyncHandler();
             } catch (Throwable e) {
-                LOG.warn("executeInvokeCallback Exception", e);
+                LOG.warn("Execute async handler in current thread exception", e);
             } finally {
                 responseFuture.release();
             }
