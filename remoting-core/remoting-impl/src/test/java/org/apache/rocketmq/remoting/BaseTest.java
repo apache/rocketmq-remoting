@@ -26,6 +26,8 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
 import org.apache.rocketmq.remoting.api.command.TrafficType;
+import org.apache.rocketmq.remoting.config.RemotingClientConfig;
+import org.apache.rocketmq.remoting.config.RemotingServerConfig;
 import org.apache.rocketmq.remoting.external.ThreadUtils;
 import org.apache.rocketmq.remoting.impl.command.RemotingCommandFactoryImpl;
 import org.assertj.core.api.Fail;
@@ -82,7 +84,7 @@ public class BaseTest {
     }
 
     protected void shouldNotReachHere() {
-        throw new RuntimeException("shouldn't reach here");
+        Fail.fail("Shouldn't reach here");
     }
 
     protected RemotingCommand randomRemotingCommand() {
@@ -135,6 +137,20 @@ public class BaseTest {
         }).when(fakeOut).println(any(String.class));
 
         return objectFuture;
+    }
+
+    protected RemotingClientConfig clientConfig() {
+        RemotingClientConfig clientConfig = new RemotingClientConfig();
+        clientConfig.setRemotingShutdownQuietPeriodMillis(0);
+        clientConfig.setRemotingShutdownTimeoutMillis(10);
+        return clientConfig;
+    }
+
+    protected RemotingServerConfig serverConfig() {
+        RemotingServerConfig serverConfig = new RemotingServerConfig();
+        serverConfig.setRemotingShutdownQuietPeriodMillis(0);
+        serverConfig.setRemotingShutdownTimeoutMillis(10);
+        return serverConfig;
     }
 
     protected class ObjectFuture<T> {

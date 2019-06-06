@@ -39,6 +39,7 @@ import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.EventExecutorGroup;
 import java.net.InetSocketAddress;
+import java.util.concurrent.TimeUnit;
 import org.apache.rocketmq.remoting.api.AsyncHandler;
 import org.apache.rocketmq.remoting.api.RemotingServer;
 import org.apache.rocketmq.remoting.api.channel.RemotingChannel;
@@ -119,11 +120,14 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
     @Override
     public void stop() {
         try {
-            this.bossGroup.shutdownGracefully().syncUninterruptibly();
+            this.bossGroup.shutdownGracefully(serverConfig.getRemotingShutdownQuietPeriodMillis(),
+                serverConfig.getRemotingShutdownTimeoutMillis(), TimeUnit.MILLISECONDS).sync();
 
-            this.ioGroup.shutdownGracefully().syncUninterruptibly();
+            this.ioGroup.shutdownGracefully(serverConfig.getRemotingShutdownQuietPeriodMillis(),
+                serverConfig.getRemotingShutdownTimeoutMillis(), TimeUnit.MILLISECONDS).sync();
 
-            this.workerGroup.shutdownGracefully().syncUninterruptibly();
+            this.workerGroup.shutdownGracefully(serverConfig.getRemotingShutdownQuietPeriodMillis(),
+                serverConfig.getRemotingShutdownTimeoutMillis(), TimeUnit.MILLISECONDS).sync();
         } catch (Exception e) {
             LOG.warn("RemotingServer stopped error !", e);
         }

@@ -34,6 +34,9 @@ public abstract class RemotingConfig extends TcpSocketConfig {
 
     private int publicExecutorThreads = 4;
 
+    private int remotingShutdownQuietPeriodMillis = 2000;
+    private int remotingShutdownTimeoutMillis = 15000;
+
     public abstract int getOnewayInvokeSemaphore();
 
     public abstract int getAsyncInvokeSemaphore();
@@ -92,5 +95,21 @@ public abstract class RemotingConfig extends TcpSocketConfig {
 
     public void setPublicExecutorThreads(final int publicExecutorThreads) {
         this.publicExecutorThreads = publicExecutorThreads;
+    }
+
+    public int getRemotingShutdownQuietPeriodMillis() {
+        return remotingShutdownQuietPeriodMillis;
+    }
+
+    public void setRemotingShutdownQuietPeriodMillis(final int remotingShutdownQuietPeriodMillis) {
+        this.remotingShutdownQuietPeriodMillis = remotingShutdownQuietPeriodMillis;
+    }
+
+    public int getRemotingShutdownTimeoutMillis() {
+        return remotingShutdownTimeoutMillis;
+    }
+
+    public void setRemotingShutdownTimeoutMillis(final int remotingShutdownTimeoutMillis) {
+        this.remotingShutdownTimeoutMillis = remotingShutdownTimeoutMillis;
     }
 }

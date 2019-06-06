@@ -37,6 +37,7 @@ import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.EventExecutorGroup;
 import java.net.SocketAddress;
+import java.util.concurrent.TimeUnit;
 import org.apache.rocketmq.remoting.api.AsyncHandler;
 import org.apache.rocketmq.remoting.api.RemotingClient;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
@@ -105,9 +106,11 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
         try {
             clientChannelManager.clear();
 
-            this.ioGroup.shutdownGracefully();
+            this.ioGroup.shutdownGracefully(clientConfig.getRemotingShutdownQuietPeriodMillis(),
+                clientConfig.getRemotingShutdownTimeoutMillis(), TimeUnit.MILLISECONDS).sync();
 
-            this.workerGroup.shutdownGracefully();
+            this.workerGroup.shutdownGracefully(clientConfig.getRemotingShutdownQuietPeriodMillis(),
+                clientConfig.getRemotingShutdownTimeoutMillis(), TimeUnit.MILLISECONDS).sync();
         } catch (Exception e) {
             LOG.warn("RemotingClient stopped error !", e);
         }
@@ -181,6 +184,10 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
         } else {
             this.clientChannelManager.closeChannel(address, channel);
         }
+    }
+
+    public void setClientChannelManager(final ClientChannelManager clientChannelManager) {
+        this.clientChannelManager = clientChannelManager;
     }
 
     private class ClientConnectionHandler extends ChannelDuplexHandler {
