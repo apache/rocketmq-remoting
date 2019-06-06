@@ -196,14 +196,11 @@ public class EpollRemoteConnectionTest extends BaseTest {
 
     @Test
     public void invokeOnewayToServer_Success() {
-        final ObjectFuture<RemotingCommand> requestFuture = newObjectFuture(1, 1000);
         final ObjectFuture<RemotingCommand> responseFuture = newObjectFuture(1, 1000);
 
         Interceptor interceptor = new Interceptor() {
             @Override
             public void beforeRequest(final RequestContext context) {
-                requestFuture.putObject(context.getRequest());
-                requestFuture.release();
             }
 
             @Override
@@ -217,21 +214,18 @@ public class EpollRemoteConnectionTest extends BaseTest {
         remotingEpollServer.registerInterceptor(interceptor);
 
         // Client to epoll server
-        remotingClient.invokeOneWay(remoteEpollAddr, request);
+        remotingClient.invokeOneWay(remoteEpollAddr, requestCommand());
 
-        assertThat(requestFuture.getObject()).isEqualTo(request);
         assertThat(new String(responseFuture.getObject().payload())).isEqualTo("Pong");
 
         // Epoll client to server
-        remotingEpollClient.invokeOneWay(remoteAddr, request);
+        remotingEpollClient.invokeOneWay(remoteAddr, requestCommand());
 
-        assertThat(requestFuture.getObject()).isEqualTo(request);
         assertThat(new String(responseFuture.getObject().payload())).isEqualTo("Pong");
 
         // Epoll client to epoll server
-        remotingEpollClient.invokeOneWay(remoteEpollAddr, request);
+        remotingEpollClient.invokeOneWay(remoteEpollAddr, requestCommand());
 
-        assertThat(requestFuture.getObject()).isEqualTo(request);
         assertThat(new String(responseFuture.getObject().payload())).isEqualTo("Pong");
     }
 }
