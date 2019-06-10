@@ -19,12 +19,12 @@ package org.apache.rocketmq.remoting.impl.buffer;
 
 import io.netty.buffer.ByteBuf;
 import java.nio.ByteBuffer;
-import org.apache.rocketmq.remoting.api.buffer.ByteBufferWrapper;
+import org.apache.rocketmq.remoting.api.buffer.RemotingBuffer;
 
-public class NettyByteBufferWrapper implements ByteBufferWrapper {
+public class NettyRemotingBuffer implements RemotingBuffer {
     private final ByteBuf buffer;
 
-    public NettyByteBufferWrapper(ByteBuf buffer) {
+    public NettyRemotingBuffer(ByteBuf buffer) {
         this.buffer = buffer;
     }
 

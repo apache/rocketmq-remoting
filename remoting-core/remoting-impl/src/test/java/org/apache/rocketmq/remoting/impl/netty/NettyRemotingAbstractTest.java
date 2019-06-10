@@ -35,8 +35,8 @@ import org.apache.rocketmq.remoting.api.RequestProcessor;
 import org.apache.rocketmq.remoting.api.channel.ChannelEventListener;
 import org.apache.rocketmq.remoting.api.channel.RemotingChannel;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
-import org.apache.rocketmq.remoting.api.exception.RemoteAccessException;
-import org.apache.rocketmq.remoting.api.exception.RemoteTimeoutException;
+import org.apache.rocketmq.remoting.api.exception.RemotingAccessException;
+import org.apache.rocketmq.remoting.api.exception.RemotingTimeoutException;
 import org.apache.rocketmq.remoting.api.exception.SemaphoreExhaustedException;
 import org.apache.rocketmq.remoting.api.interceptor.Interceptor;
 import org.apache.rocketmq.remoting.api.interceptor.RequestContext;
@@ -260,7 +260,7 @@ public class NettyRemotingAbstractTest extends BaseTest {
         TimeUnit.MILLISECONDS.sleep(15);
         remotingAbstract.scanResponseTable();
 
-        assertThat(objectFuture.getObject()).isInstanceOf(RemoteTimeoutException.class);
+        assertThat(objectFuture.getObject()).isInstanceOf(RemotingTimeoutException.class);
     }
 
     @Test
@@ -278,9 +278,9 @@ public class NettyRemotingAbstractTest extends BaseTest {
 
         try {
             RemotingCommand response = remotingAbstract.invokeWithInterceptor(clientChannel, remotingRequest, 10);
-            failBecauseExceptionWasNotThrown(RemoteTimeoutException.class);
+            failBecauseExceptionWasNotThrown(RemotingTimeoutException.class);
         } catch (Exception e) {
-            assertThat(e).isInstanceOf(RemoteTimeoutException.class);
+            assertThat(e).isInstanceOf(RemotingTimeoutException.class);
         }
     }
 
@@ -293,10 +293,10 @@ public class NettyRemotingAbstractTest extends BaseTest {
 
         try {
             RemotingCommand response = remotingAbstract.invokeWithInterceptor(mockedClientChannel, remotingRequest, 10);
-            failBecauseExceptionWasNotThrown(RemoteAccessException.class);
+            failBecauseExceptionWasNotThrown(RemotingAccessException.class);
         } catch (Exception e) {
             assertThat(e.getCause()).isInstanceOf(UnitTestException.class);
-            assertThat(e).isInstanceOf(RemoteAccessException.class);
+            assertThat(e).isInstanceOf(RemotingAccessException.class);
         }
     }
 

@@ -42,8 +42,8 @@ import org.apache.rocketmq.remoting.api.AsyncHandler;
 import org.apache.rocketmq.remoting.api.RemotingClient;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
 import org.apache.rocketmq.remoting.api.command.TrafficType;
-import org.apache.rocketmq.remoting.api.exception.RemoteConnectFailureException;
-import org.apache.rocketmq.remoting.api.exception.RemoteTimeoutException;
+import org.apache.rocketmq.remoting.api.exception.RemotingConnectFailureException;
+import org.apache.rocketmq.remoting.api.exception.RemotingTimeoutException;
 import org.apache.rocketmq.remoting.config.RemotingClientConfig;
 import org.apache.rocketmq.remoting.external.ThreadUtils;
 import org.apache.rocketmq.remoting.impl.netty.handler.Decoder;
@@ -144,7 +144,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
             try {
                 return this.invokeWithInterceptor(channel, request, timeoutMillis);
 
-            } catch (RemoteTimeoutException e) {
+            } catch (RemotingTimeoutException e) {
                 if (this.clientConfig.isClientCloseSocketIfTimeout()) {
                     LOG.warn("invoke: timeout, so close the socket {} ms, {}", timeoutMillis, address);
                     this.clientChannelManager.closeChannel(address, channel);
@@ -159,7 +159,7 @@ public class NettyRemotingClient extends NettyRemotingAbstract implements Remoti
             }
         } else {
             this.clientChannelManager.closeChannel(address, channel);
-            throw new RemoteConnectFailureException(address);
+            throw new RemotingConnectFailureException(address);
         }
 
     }

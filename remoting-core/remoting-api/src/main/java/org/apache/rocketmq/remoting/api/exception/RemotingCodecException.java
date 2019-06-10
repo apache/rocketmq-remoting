@@ -15,46 +15,19 @@
  * limitations under the License.
  */
 
-package org.apache.rocketmq.remoting.api.buffer;
+package org.apache.rocketmq.remoting.api.exception;
 
-import java.nio.ByteBuffer;
+/**
+ * @since 1.0.0
+ */
+public class RemotingCodecException extends RemotingAccessException {
+    private static final long serialVersionUID = -7597014042746200543L;
 
-public interface ByteBufferWrapper {
-    void writeByte(byte data);
+    public RemotingCodecException(String msg) {
+        super(msg);
+    }
 
-    void writeByte(int index, byte data);
-
-    void writeBytes(byte[] data);
-
-    void writeBytes(ByteBuffer data);
-
-    void writeInt(int data);
-
-    void writeShort(short value);
-
-    void writeLong(long id);
-
-    byte readByte();
-
-    void readBytes(byte[] dst);
-
-    void readBytes(ByteBuffer dst);
-
-    short readShort();
-
-    int readInt();
-
-    long readLong();
-
-    int readableBytes();
-
-    int readerIndex();
-
-    void setReaderIndex(int readerIndex);
-
-    int writerIndex();
-
-    void setWriterIndex(int writerIndex);
-
-    void ensureCapacity(int capacity);
+    public RemotingCodecException(String msg, Throwable cause) {
+        super(msg, cause);
+    }
 }

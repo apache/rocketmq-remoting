@@ -42,9 +42,9 @@ import org.apache.rocketmq.remoting.api.channel.RemotingChannel;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
 import org.apache.rocketmq.remoting.api.command.RemotingCommandFactory;
 import org.apache.rocketmq.remoting.api.command.TrafficType;
-import org.apache.rocketmq.remoting.api.exception.RemoteAccessException;
-import org.apache.rocketmq.remoting.api.exception.RemoteRuntimeException;
-import org.apache.rocketmq.remoting.api.exception.RemoteTimeoutException;
+import org.apache.rocketmq.remoting.api.exception.RemotingAccessException;
+import org.apache.rocketmq.remoting.api.exception.RemotingRuntimeException;
+import org.apache.rocketmq.remoting.api.exception.RemotingTimeoutException;
 import org.apache.rocketmq.remoting.api.exception.SemaphoreExhaustedException;
 import org.apache.rocketmq.remoting.api.interceptor.Interceptor;
 import org.apache.rocketmq.remoting.api.interceptor.InterceptorGroup;
@@ -169,7 +169,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
 
             if (rf != null) {
                 LOG.warn("Removes timeout request {} ", rf.getRequestCommand());
-                rf.setCause(new RemoteTimeoutException(String.format("Request to %s timeout", rf.getRemoteAddr()), rf.getTimeoutMillis()));
+                rf.setCause(new RemotingTimeoutException(String.format("Request to %s timeout", rf.getRemoteAddr()), rf.getTimeoutMillis()));
                 executeAsyncHandler(rf);
             }
         }
@@ -327,7 +327,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         }
     }
 
-    private void requestFail(final int requestID, final RemoteRuntimeException cause) {
+    private void requestFail(final int requestID, final RemotingRuntimeException cause) {
         ResponseFuture responseFuture = ackTables.remove(requestID);
         if (responseFuture != null) {
             responseFuture.setSendRequestOK(false);
@@ -337,7 +337,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
         }
     }
 
-    private void requestFail(final ResponseFuture responseFuture, final RemoteRuntimeException cause) {
+    private void requestFail(final ResponseFuture responseFuture, final RemotingRuntimeException cause) {
         responseFuture.setCause(cause);
         executeAsyncHandler(responseFuture);
     }
@@ -396,7 +396,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                         responseFuture.setSendRequestOK(false);
 
                         ackTables.remove(requestID);
-                        responseFuture.setCause(new RemoteAccessException(RemotingUtil.extractRemoteAddress(channel), f.cause()));
+                        responseFuture.setCause(new RemotingAccessException(RemotingUtil.extractRemoteAddress(channel), f.cause()));
                         responseFuture.putResponse(null);
 
                         LOG.warn("Send request command to {} failed !", remoteAddr);
@@ -410,7 +410,7 @@ public abstract class NettyRemotingAbstract implements RemotingService {
 
             if (null == responseCommand) {
                 if (responseFuture.isSendRequestOK()) {
-                    responseFuture.setCause(new RemoteTimeoutException(RemotingUtil.extractRemoteAddress(channel), timeoutMillis));
+                    responseFuture.setCause(new RemotingTimeoutException(RemotingUtil.extractRemoteAddress(channel), timeoutMillis));
                     throw responseFuture.getCause();
                 } else {
                     throw responseFuture.getCause();
@@ -460,14 +460,14 @@ public abstract class NettyRemotingAbstract implements RemotingService {
                             return;
                         }
 
-                        requestFail(requestID, new RemoteAccessException(RemotingUtil.extractRemoteAddress(channel), f.cause()));
+                        requestFail(requestID, new RemotingAccessException(RemotingUtil.extractRemoteAddress(channel), f.cause()));
                         LOG.warn("Send request command to channel  failed.", remoteAddr);
                     }
                 };
 
                 this.writeAndFlush(channel, request, listener);
             } catch (Exception e) {
-                requestFail(requestID, new RemoteAccessException(RemotingUtil.extractRemoteAddress(channel), e));
+                requestFail(requestID, new RemotingAccessException(RemotingUtil.extractRemoteAddress(channel), e));
                 LOG.error("Send request command to channel " + channel + " error !", e);
             }
         } else {

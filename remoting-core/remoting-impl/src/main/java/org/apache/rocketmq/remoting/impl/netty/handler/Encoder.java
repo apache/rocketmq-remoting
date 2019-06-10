@@ -22,10 +22,10 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
-import org.apache.rocketmq.remoting.api.buffer.ByteBufferWrapper;
+import org.apache.rocketmq.remoting.api.buffer.RemotingBuffer;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
-import org.apache.rocketmq.remoting.api.exception.RemoteCodecException;
-import org.apache.rocketmq.remoting.impl.buffer.NettyByteBufferWrapper;
+import org.apache.rocketmq.remoting.api.exception.RemotingCodecException;
+import org.apache.rocketmq.remoting.impl.buffer.NettyRemotingBuffer;
 import org.apache.rocketmq.remoting.impl.command.CodecHelper;
 import org.apache.rocketmq.remoting.internal.RemotingUtil;
 import org.slf4j.Logger;
@@ -40,10 +40,10 @@ public class Encoder extends MessageToByteEncoder<RemotingCommand> {
     @Override
     public void encode(final ChannelHandlerContext ctx, RemotingCommand remotingCommand, ByteBuf out) throws Exception {
         try {
-            ByteBufferWrapper wrapper = new NettyByteBufferWrapper(out);
+            RemotingBuffer wrapper = new NettyRemotingBuffer(out);
 
             encode(remotingCommand, wrapper);
-        } catch (final RemoteCodecException e) {
+        } catch (final RemotingCodecException e) {
             String remoteAddress = RemotingUtil.extractRemoteAddress(ctx.channel());
             LOG.error(String.format("Error occurred when encoding command for channel %s", remoteAddress), e);
 
@@ -56,7 +56,7 @@ public class Encoder extends MessageToByteEncoder<RemotingCommand> {
         }
     }
 
-    private void encode(final RemotingCommand remotingCommand, final ByteBufferWrapper out) {
+    private void encode(final RemotingCommand remotingCommand, final RemotingBuffer out) {
         CodecHelper.encodeCommand(remotingCommand, out);
     }
 }

@@ -17,54 +17,54 @@
 package org.apache.rocketmq.remoting.api.exception;
 
 /**
- * RemoteTimeoutException will be thrown when the execution
+ * RemotingTimeoutException will be thrown when the execution
  * of the target method did not complete before a configurable
  * timeout, for example when a reply message was not received.
  *
  * @since 1.0.0
  */
-public class RemoteTimeoutException extends RemoteAccessException {
+public class RemotingTimeoutException extends RemotingAccessException {
     private static final long serialVersionUID = 8710772392914461626L;
 
     /**
-     * Constructor for RemoteTimeoutException with the specified detail message,configurable timeout.
+     * Constructor for RemotingTimeoutException with the specified detail message,configurable timeout.
      *
      * @param msg the detail message
      * @param timeoutMillis configurable timeout
      */
-    public RemoteTimeoutException(String msg, long timeoutMillis) {
+    public RemotingTimeoutException(String msg, long timeoutMillis) {
         this(msg, timeoutMillis, null);
     }
 
     /**
-     * Constructor for RemoteTimeoutException with the specified detail message,configurable timeout
+     * Constructor for RemotingTimeoutException with the specified detail message,configurable timeout
      * and nested exception..
      *
      * @param msg the detail message
      * @param timeoutMillis configurable timeout
      * @param cause Exception cause
      */
-    public RemoteTimeoutException(String msg, long timeoutMillis, Throwable cause) {
+    public RemotingTimeoutException(String msg, long timeoutMillis, Throwable cause) {
         super(String.format("%s, waiting for %s ms", msg, timeoutMillis), cause);
     }
 
     /**
-     * Constructor for RemoteTimeoutException with the specified detail message.
+     * Constructor for RemotingTimeoutException with the specified detail message.
      *
      * @param msg the detail message
      */
-    public RemoteTimeoutException(String msg) {
+    public RemotingTimeoutException(String msg) {
         super(msg);
     }
 
     /**
-     * Constructor for RemoteTimeoutException with the specified detail message
+     * Constructor for RemotingTimeoutException with the specified detail message
      * and nested exception.
      *
      * @param msg the detail message
      * @param cause the root cause from the remoting API in use
      */
-    public RemoteTimeoutException(String msg, Throwable cause) {
+    public RemotingTimeoutException(String msg, Throwable cause) {
         super(msg, cause);
     }
 }

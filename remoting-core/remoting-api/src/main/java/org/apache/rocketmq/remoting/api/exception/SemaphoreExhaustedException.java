@@ -17,7 +17,7 @@
 
 package org.apache.rocketmq.remoting.api.exception;
 
-public class SemaphoreExhaustedException extends RemoteRuntimeException {
+public class SemaphoreExhaustedException extends RemotingRuntimeException {
     private static final long serialVersionUID = 6280428909532427263L;
 
     /**

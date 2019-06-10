@@ -23,7 +23,7 @@ import java.nio.channels.ClosedChannelException;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.rocketmq.remoting.BaseTest;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
-import org.apache.rocketmq.remoting.impl.buffer.NettyByteBufferWrapper;
+import org.apache.rocketmq.remoting.impl.buffer.NettyRemotingBuffer;
 import org.apache.rocketmq.remoting.impl.command.CodecHelper;
 import org.junit.Test;
 
@@ -47,7 +47,7 @@ public class EncoderTest extends BaseTest {
         assertEquals(PROTOCOL_MAGIC, buffer.readByte());
         buffer.readInt();
 
-        RemotingCommand decodedRequest = CodecHelper.decode(new NettyByteBufferWrapper(buffer));
+        RemotingCommand decodedRequest = CodecHelper.decode(new NettyRemotingBuffer(buffer));
 
         assertEquals(request, decodedRequest);
     }

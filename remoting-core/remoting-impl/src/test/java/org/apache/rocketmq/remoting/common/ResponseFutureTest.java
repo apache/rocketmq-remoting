@@ -21,8 +21,8 @@ import java.util.concurrent.TimeUnit;
 import org.apache.rocketmq.remoting.BaseTest;
 import org.apache.rocketmq.remoting.api.AsyncHandler;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
-import org.apache.rocketmq.remoting.api.exception.RemoteAccessException;
-import org.apache.rocketmq.remoting.api.exception.RemoteRuntimeException;
+import org.apache.rocketmq.remoting.api.exception.RemotingAccessException;
+import org.apache.rocketmq.remoting.api.exception.RemotingRuntimeException;
 import org.apache.rocketmq.remoting.impl.command.RemotingCommandFactoryImpl;
 import org.junit.Test;
 
@@ -58,7 +58,7 @@ public class ResponseFutureTest extends BaseTest {
     public void executeAsyncHandler_Failure() {
         final RemotingCommand reqCommand = factory.createRequest();
         final RemotingCommand resCommand = factory.createResponse(reqCommand);
-        final RemoteRuntimeException exception = new RemoteAccessException("Test Exception");
+        final RemotingRuntimeException exception = new RemotingAccessException("Test Exception");
         future = new ResponseFuture(1, 3000, new AsyncHandler() {
             @Override
             public void onFailure(final RemotingCommand request, final Throwable cause) {

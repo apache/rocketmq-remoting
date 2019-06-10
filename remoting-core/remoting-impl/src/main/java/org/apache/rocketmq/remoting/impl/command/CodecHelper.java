@@ -19,10 +19,10 @@ package org.apache.rocketmq.remoting.impl.command;
 
 import java.nio.charset.Charset;
 import java.util.Map.Entry;
-import org.apache.rocketmq.remoting.api.buffer.ByteBufferWrapper;
+import org.apache.rocketmq.remoting.api.buffer.RemotingBuffer;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
 import org.apache.rocketmq.remoting.api.command.TrafficType;
-import org.apache.rocketmq.remoting.api.exception.RemoteCodecException;
+import org.apache.rocketmq.remoting.api.exception.RemotingCodecException;
 
 public class CodecHelper {
     // ProtocolMagic(1) + TotalLength(4) + CmdCode(2) + CmdVersion(2) + RequestID(4) + TrafficType(1) + OpCode(2)
@@ -36,7 +36,7 @@ public class CodecHelper {
     private final static char PROPERTY_SEPARATOR = '\n';
     private final static Charset REMOTING_CHARSET = Charset.forName("UTF-8");
 
-    public static void encodeCommand(final RemotingCommand command, final ByteBufferWrapper out) {
+    public static void encodeCommand(final RemotingCommand command, final RemotingBuffer out) {
         out.writeByte(PROTOCOL_MAGIC);
 
         short remarkLen = 0;
@@ -44,7 +44,7 @@ public class CodecHelper {
         if (command.remark() != null) {
             remark = command.remark().getBytes(REMOTING_CHARSET);
             if (remark.length > REMARK_MAX_LEN) {
-                throw new RemoteCodecException(String.format("Remark len: %d over max limit: %d", remark.length, REMARK_MAX_LEN));
+                throw new RemotingCodecException(String.format("Remark len: %d over max limit: %d", remark.length, REMARK_MAX_LEN));
             }
             remarkLen = (short) remark.length;
         }
@@ -64,7 +64,7 @@ public class CodecHelper {
                 props[i] = sb.toString().getBytes(REMOTING_CHARSET);
 
                 if (props[i].length > Short.MAX_VALUE) {
-                    throw new RemoteCodecException(String.format("Property KV len: %d over max limit: %d", props[i].length, Short.MAX_VALUE));
+                    throw new RemotingCodecException(String.format("Property KV len: %d over max limit: %d", props[i].length, Short.MAX_VALUE));
                 }
 
                 propsLen += 2;
@@ -74,13 +74,13 @@ public class CodecHelper {
         }
 
         if (propsLen > PROPERTY_MAX_LEN) {
-            throw new RemoteCodecException(String.format("Properties total len: %d over max limit: %d", propsLen, PROPERTY_MAX_LEN));
+            throw new RemotingCodecException(String.format("Properties total len: %d over max limit: %d", propsLen, PROPERTY_MAX_LEN));
         }
 
         int payloadLen = command.payload() == null ? 0 : command.payload().length;
 
         if (payloadLen > PAYLOAD_MAX_LEN) {
-            throw new RemoteCodecException(String.format("Payload len: %d over max limit: %d", payloadLen, PAYLOAD_MAX_LEN));
+            throw new RemotingCodecException(String.format("Payload len: %d over max limit: %d", payloadLen, PAYLOAD_MAX_LEN));
         }
 
         int totalLength = MIN_PROTOCOL_LEN
@@ -116,7 +116,7 @@ public class CodecHelper {
         }
     }
 
-    public static RemotingCommand decode(final ByteBufferWrapper in) {
+    public static RemotingCommand decode(final RemotingBuffer in) {
         RemotingCommandImpl cmd = new RemotingCommandImpl();
 
         cmd.cmdCode(in.readShort());
@@ -153,7 +153,7 @@ public class CodecHelper {
                 propsLen += 2;
                 propsLen += length;
                 if (propsLen > PROPERTY_MAX_LEN) {
-                    throw new RemoteCodecException(String.format("Properties total len: %d over max limit: %d", propsLen, PROPERTY_MAX_LEN));
+                    throw new RemotingCodecException(String.format("Properties total len: %d over max limit: %d", propsLen, PROPERTY_MAX_LEN));
                 }
             }
         }
@@ -161,7 +161,7 @@ public class CodecHelper {
         int payloadLen = in.readInt();
 
         if (payloadLen > PAYLOAD_MAX_LEN) {
-            throw new RemoteCodecException(String.format("Payload len: %d over max limit: %d", payloadLen, PAYLOAD_MAX_LEN));
+            throw new RemotingCodecException(String.format("Payload len: %d over max limit: %d", payloadLen, PAYLOAD_MAX_LEN));
         }
 
         if (payloadLen > 0) {

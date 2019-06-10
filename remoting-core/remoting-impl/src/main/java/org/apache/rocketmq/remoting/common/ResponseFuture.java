@@ -25,7 +25,7 @@ import org.apache.commons.lang3.builder.ToStringExclude;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.apache.rocketmq.remoting.api.AsyncHandler;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
-import org.apache.rocketmq.remoting.api.exception.RemoteRuntimeException;
+import org.apache.rocketmq.remoting.api.exception.RemotingRuntimeException;
 import org.jetbrains.annotations.Nullable;
 
 public class ResponseFuture {
@@ -44,7 +44,7 @@ public class ResponseFuture {
 
     private volatile RemotingCommand responseCommand;
     private volatile boolean sendRequestOK = true;
-    private volatile RemoteRuntimeException cause;
+    private volatile RemotingRuntimeException cause;
 
     @ToStringExclude
     private SemaphoreReleaseOnlyOnce once;
@@ -117,11 +117,11 @@ public class ResponseFuture {
         return asyncHandler;
     }
 
-    public RemoteRuntimeException getCause() {
+    public RemotingRuntimeException getCause() {
         return cause;
     }
 
-    public void setCause(RemoteRuntimeException cause) {
+    public void setCause(RemotingRuntimeException cause) {
         this.cause = cause;
     }
 

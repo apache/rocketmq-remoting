@@ -18,16 +18,32 @@
 package org.apache.rocketmq.remoting.api.exception;
 
 /**
+ * RemotingConnectFailureException will be thrown when connection
+ * could not be established with a remote service.
+ *
  * @since 1.0.0
  */
-public class RemoteCodecException extends RemoteAccessException {
-    private static final long serialVersionUID = -7597014042746200543L;
+public class RemotingConnectFailureException extends RemotingAccessException {
+    private static final long serialVersionUID = -5565366231695911316L;
 
-    public RemoteCodecException(String msg) {
+    /**
+     * Constructor for RemotingConnectFailureException with the specified detail message
+     * and nested exception.
+     *
+     * @param msg the detail message
+     * @param cause the root cause from the remoting API in use
+     */
+    public RemotingConnectFailureException(String msg, Throwable cause) {
+        super(msg, cause);
+    }
+
+    /**
+     * Constructor for RemotingConnectFailureException with the specified detail message.
+     *
+     * @param msg the detail message
+     */
+    public RemotingConnectFailureException(String msg) {
         super(msg);
     }
 
-    public RemoteCodecException(String msg, Throwable cause) {
-        super(msg, cause);
-    }
 }

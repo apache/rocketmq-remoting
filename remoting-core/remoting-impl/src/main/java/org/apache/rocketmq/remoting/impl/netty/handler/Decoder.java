@@ -23,10 +23,10 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import java.util.List;
-import org.apache.rocketmq.remoting.api.buffer.ByteBufferWrapper;
+import org.apache.rocketmq.remoting.api.buffer.RemotingBuffer;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
-import org.apache.rocketmq.remoting.api.exception.RemoteCodecException;
-import org.apache.rocketmq.remoting.impl.buffer.NettyByteBufferWrapper;
+import org.apache.rocketmq.remoting.api.exception.RemotingCodecException;
+import org.apache.rocketmq.remoting.impl.buffer.NettyRemotingBuffer;
 import org.apache.rocketmq.remoting.impl.command.CodecHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +43,7 @@ public class Decoder extends ByteToMessageDecoder {
             return;
         }
 
-        NettyByteBufferWrapper wrapper = new NettyByteBufferWrapper(in);
+        NettyRemotingBuffer wrapper = new NettyRemotingBuffer(in);
 
         Object msg = this.decode(ctx, wrapper);
         if (msg != null) {
@@ -51,16 +51,16 @@ public class Decoder extends ByteToMessageDecoder {
         }
     }
 
-    private Object decode(final ChannelHandlerContext ctx, ByteBufferWrapper wrapper) throws Exception {
+    private Object decode(final ChannelHandlerContext ctx, RemotingBuffer wrapper) throws Exception {
         int originReaderIndex = wrapper.readerIndex();
 
         byte magic = wrapper.readByte();
         try {
             if (magic != CodecHelper.PROTOCOL_MAGIC) {
-                throw new RemoteCodecException(String.format("MagicCode %d is wrong, expect %d", magic, CodecHelper.PROTOCOL_MAGIC));
+                throw new RemotingCodecException(String.format("MagicCode %d is wrong, expect %d", magic, CodecHelper.PROTOCOL_MAGIC));
             }
             return decode(wrapper, originReaderIndex);
-        } catch (final RemoteCodecException e) {
+        } catch (final RemotingCodecException e) {
             LOG.warn("Decode error {}, close the channel {}", e.getMessage(), ctx.channel());
             ctx.channel().close().addListener(new ChannelFutureListener() {
                 @Override
@@ -72,7 +72,7 @@ public class Decoder extends ByteToMessageDecoder {
         return null;
     }
 
-    public RemotingCommand decode(final ByteBufferWrapper wrapper, final int originReaderIndex) {
+    public RemotingCommand decode(final RemotingBuffer wrapper, final int originReaderIndex) {
         // Full message isn't available yet, return nothing for now
         if (wrapper.readableBytes() < CodecHelper.MIN_PROTOCOL_LEN - 1 /*MagicCode*/) {
             wrapper.setReaderIndex(originReaderIndex);
@@ -82,11 +82,11 @@ public class Decoder extends ByteToMessageDecoder {
         int totalLength = wrapper.readInt();
 
         if (totalLength <= 0) {
-            throw new RemoteCodecException("Illegal total length " + totalLength);
+            throw new RemotingCodecException("Illegal total length " + totalLength);
         }
 
         if (totalLength > CodecHelper.PACKET_MAX_LEN) {
-            throw new RemoteCodecException(String.format("Total length %d is more than limit %d", totalLength, CodecHelper.PACKET_MAX_LEN));
+            throw new RemotingCodecException(String.format("Total length %d is more than limit %d", totalLength, CodecHelper.PACKET_MAX_LEN));
         }
 
         if (wrapper.readableBytes() < totalLength - 1 /*MagicCode*/ - 4 /*TotalLen*/) {

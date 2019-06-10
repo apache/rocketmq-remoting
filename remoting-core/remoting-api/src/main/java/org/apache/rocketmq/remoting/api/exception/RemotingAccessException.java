@@ -22,7 +22,7 @@ package org.apache.rocketmq.remoting.api.exception;
  * protocol should throw this exception or subclasses of it, in order
  * to transparently expose a plain Java business interface.
  *
- * <p>A client may catch RemoteAccessException if it wants to, but as
+ * <p>A client may catch RemotingAccessException if it wants to, but as
  * remote access errors are typically unrecoverable, it will probably let
  * such exceptions propagate to a higher level that handles them generically.
  * In this case, the client opCode doesn't show any signs of being involved in
@@ -30,27 +30,27 @@ package org.apache.rocketmq.remoting.api.exception;
  *
  * @since 1.0.0
  */
-public class RemoteAccessException extends RemoteRuntimeException {
+public class RemotingAccessException extends RemotingRuntimeException {
     private static final long serialVersionUID = 6280428909532427263L;
 
     /**
-     * Constructor for RemoteAccessException with the specified detail message.
+     * Constructor for RemotingAccessException with the specified detail message.
      *
      * @param msg the detail message
      */
-    public RemoteAccessException(String msg) {
+    public RemotingAccessException(String msg) {
         super(msg);
     }
 
     /**
-     * Constructor for RemoteAccessException with the specified detail message
+     * Constructor for RemotingAccessException with the specified detail message
      * and nested exception.
      *
      * @param msg the detail message
      * @param cause the root cause (usually from using an underlying
      * remoting API such as RMI)
      */
-    public RemoteAccessException(String msg, Throwable cause) {
+    public RemotingAccessException(String msg, Throwable cause) {
         super(msg, cause);
     }
 

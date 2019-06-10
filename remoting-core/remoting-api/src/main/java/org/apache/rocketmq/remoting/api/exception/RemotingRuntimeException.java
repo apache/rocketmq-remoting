@@ -27,26 +27,26 @@ package org.apache.rocketmq.remoting.api.exception;
  *
  * @since 1.0.0
  */
-public abstract class RemoteRuntimeException extends RuntimeException {
+public abstract class RemotingRuntimeException extends RuntimeException {
     private static final long serialVersionUID = -8371779880133933367L;
 
     /**
-     * Construct a {@code RemoteRuntimeException} with the specified detail message.
+     * Construct a {@code RemotingRuntimeException} with the specified detail message.
      *
      * @param msg the detail message
      */
-    public RemoteRuntimeException(String msg) {
+    public RemotingRuntimeException(String msg) {
         super(msg);
     }
 
     /**
-     * Construct a {@code RemoteRuntimeException} with the specified detail message
+     * Construct a {@code RemotingRuntimeException} with the specified detail message
      * and nested exception.
      *
      * @param msg the detail message
      * @param cause the nested exception
      */
-    public RemoteRuntimeException(String msg, Throwable cause) {
+    public RemotingRuntimeException(String msg, Throwable cause) {
         super(msg, cause);
     }
 

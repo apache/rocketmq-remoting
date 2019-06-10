@@ -21,8 +21,8 @@ import io.netty.channel.Channel;
 import org.apache.rocketmq.remoting.BaseTest;
 import org.apache.rocketmq.remoting.api.AsyncHandler;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
-import org.apache.rocketmq.remoting.api.exception.RemoteConnectFailureException;
-import org.apache.rocketmq.remoting.api.exception.RemoteTimeoutException;
+import org.apache.rocketmq.remoting.api.exception.RemotingConnectFailureException;
+import org.apache.rocketmq.remoting.api.exception.RemotingTimeoutException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -88,9 +88,9 @@ public class NettyRemotingClientTest extends BaseTest {
 
         try {
             RemotingCommand returnedResp = remotingClient.invoke("127.0.0.1:10911", request, 3000);
-            failBecauseExceptionWasNotThrown(RemoteConnectFailureException.class);
+            failBecauseExceptionWasNotThrown(RemotingConnectFailureException.class);
         } catch (Exception e) {
-            assertThat(e).isInstanceOf(RemoteConnectFailureException.class);
+            assertThat(e).isInstanceOf(RemotingConnectFailureException.class);
         }
     }
 
@@ -98,13 +98,13 @@ public class NettyRemotingClientTest extends BaseTest {
     public void invoke_TimeoutException() {
         RemotingCommand request = remotingClient.commandFactory().createRequest();
 
-        doThrow(new RemoteTimeoutException("Timeout exception occurred")).when(remotingClient).invokeWithInterceptor(mockedChannel, request, 3000);
+        doThrow(new RemotingTimeoutException("Timeout exception occurred")).when(remotingClient).invokeWithInterceptor(mockedChannel, request, 3000);
 
         try {
             RemotingCommand returnedResp = remotingClient.invoke("127.0.0.1:10911", request, 3000);
-            failBecauseExceptionWasNotThrown(RemoteTimeoutException.class);
+            failBecauseExceptionWasNotThrown(RemotingTimeoutException.class);
         } catch (Exception e) {
-            assertThat(e).isInstanceOf(RemoteTimeoutException.class);
+            assertThat(e).isInstanceOf(RemotingTimeoutException.class);
         }
     }
 

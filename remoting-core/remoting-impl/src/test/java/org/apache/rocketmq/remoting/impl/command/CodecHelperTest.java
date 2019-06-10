@@ -20,10 +20,10 @@ package org.apache.rocketmq.remoting.impl.command;
 import io.netty.buffer.ByteBufAllocator;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.rocketmq.remoting.BaseTest;
-import org.apache.rocketmq.remoting.api.buffer.ByteBufferWrapper;
+import org.apache.rocketmq.remoting.api.buffer.RemotingBuffer;
 import org.apache.rocketmq.remoting.api.command.RemotingCommand;
-import org.apache.rocketmq.remoting.api.exception.RemoteCodecException;
-import org.apache.rocketmq.remoting.impl.buffer.NettyByteBufferWrapper;
+import org.apache.rocketmq.remoting.api.exception.RemotingCodecException;
+import org.apache.rocketmq.remoting.impl.buffer.NettyRemotingBuffer;
 import org.junit.Test;
 
 import static org.apache.rocketmq.remoting.impl.command.CodecHelper.PAYLOAD_MAX_LEN;
@@ -37,7 +37,7 @@ public class CodecHelperTest extends BaseTest {
 
     @Test
     public void encodeAndDecodeCommand_Success() {
-        ByteBufferWrapper buffer = new NettyByteBufferWrapper(ByteBufAllocator.DEFAULT.heapBuffer());
+        RemotingBuffer buffer = new NettyRemotingBuffer(ByteBufAllocator.DEFAULT.heapBuffer());
         RemotingCommand command = randomRemotingCommand();
         CodecHelper.encodeCommand(command, buffer);
 
@@ -52,16 +52,16 @@ public class CodecHelperTest extends BaseTest {
 
     @Test
     public void encodeCommand_LenOverLimit_ExceptionThrown() {
-        ByteBufferWrapper buffer = new NettyByteBufferWrapper(ByteBufAllocator.DEFAULT.heapBuffer());
+        RemotingBuffer buffer = new NettyRemotingBuffer(ByteBufAllocator.DEFAULT.heapBuffer());
         RemotingCommand command = randomRemotingCommand();
 
         // Remark len exceed max limit
         command.remark(RandomStringUtils.randomAlphabetic(CodecHelper.REMARK_MAX_LEN + 1));
         try {
             CodecHelper.encodeCommand(command, buffer);
-            failBecauseExceptionWasNotThrown(RemoteCodecException.class);
+            failBecauseExceptionWasNotThrown(RemotingCodecException.class);
         } catch (Exception e) {
-            assertThat(e).isInstanceOf(RemoteCodecException.class);
+            assertThat(e).isInstanceOf(RemotingCodecException.class);
         }
 
         command = randomRemotingCommand();
@@ -69,9 +69,9 @@ public class CodecHelperTest extends BaseTest {
 
         try {
             CodecHelper.encodeCommand(command, buffer);
-            failBecauseExceptionWasNotThrown(RemoteCodecException.class);
+            failBecauseExceptionWasNotThrown(RemotingCodecException.class);
         } catch (Exception e) {
-            assertThat(e).isInstanceOf(RemoteCodecException.class);
+            assertThat(e).isInstanceOf(RemotingCodecException.class);
         }
 
         command = randomRemotingCommand();
@@ -79,9 +79,9 @@ public class CodecHelperTest extends BaseTest {
 
         try {
             CodecHelper.encodeCommand(command, buffer);
-            failBecauseExceptionWasNotThrown(RemoteCodecException.class);
+            failBecauseExceptionWasNotThrown(RemotingCodecException.class);
         } catch (Exception e) {
-            assertThat(e).isInstanceOf(RemoteCodecException.class);
+            assertThat(e).isInstanceOf(RemotingCodecException.class);
         }
 
         command = randomRemotingCommand();
@@ -89,15 +89,15 @@ public class CodecHelperTest extends BaseTest {
 
         try {
             CodecHelper.encodeCommand(command, buffer);
-            failBecauseExceptionWasNotThrown(RemoteCodecException.class);
+            failBecauseExceptionWasNotThrown(RemotingCodecException.class);
         } catch (Exception e) {
-            assertThat(e).isInstanceOf(RemoteCodecException.class);
+            assertThat(e).isInstanceOf(RemotingCodecException.class);
         }
     }
 
     @Test
     public void decodeCommand_LenOverLimit_ExceptionThrown() {
-        ByteBufferWrapper buffer = new NettyByteBufferWrapper(ByteBufAllocator.DEFAULT.heapBuffer());
+        RemotingBuffer buffer = new NettyRemotingBuffer(ByteBufAllocator.DEFAULT.heapBuffer());
 
         buffer.writeShort((short) 0);
         buffer.writeShort((short) 0);
@@ -118,9 +118,9 @@ public class CodecHelperTest extends BaseTest {
 
         try {
             CodecHelper.decode(buffer);
-            failBecauseExceptionWasNotThrown(RemoteCodecException.class);
+            failBecauseExceptionWasNotThrown(RemotingCodecException.class);
         } catch (Exception e) {
-            assertThat(e).isInstanceOf(RemoteCodecException.class);
+            assertThat(e).isInstanceOf(RemotingCodecException.class);
         }
 
         buffer.setReaderIndex(0);
@@ -131,9 +131,9 @@ public class CodecHelperTest extends BaseTest {
 
         try {
             CodecHelper.decode(buffer);
-            failBecauseExceptionWasNotThrown(RemoteCodecException.class);
+            failBecauseExceptionWasNotThrown(RemotingCodecException.class);
         } catch (Exception e) {
-            assertThat(e).isInstanceOf(RemoteCodecException.class);
+            assertThat(e).isInstanceOf(RemotingCodecException.class);
         }
     }
 }

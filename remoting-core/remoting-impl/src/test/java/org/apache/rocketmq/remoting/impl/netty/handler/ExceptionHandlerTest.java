@@ -26,7 +26,7 @@ import java.nio.channels.ClosedChannelException;
 import java.util.List;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.rocketmq.remoting.BaseTest;
-import org.apache.rocketmq.remoting.impl.buffer.NettyByteBufferWrapper;
+import org.apache.rocketmq.remoting.impl.buffer.NettyRemotingBuffer;
 import org.apache.rocketmq.remoting.impl.command.CodecHelper;
 import org.junit.Test;
 
@@ -48,7 +48,7 @@ public class ExceptionHandlerTest extends BaseTest {
             }
         }, new ExceptionHandler());
 
-        CodecHelper.encodeCommand(randomRemotingCommand(), new NettyByteBufferWrapper(buffer));
+        CodecHelper.encodeCommand(randomRemotingCommand(), new NettyRemotingBuffer(buffer));
         channel.writeInbound(buffer);
 
         try {
