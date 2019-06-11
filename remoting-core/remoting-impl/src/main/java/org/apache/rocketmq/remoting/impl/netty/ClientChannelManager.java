@@ -38,7 +38,7 @@ public class ClientChannelManager {
     protected static final Logger LOG = LoggerFactory.getLogger(ClientChannelManager.class);
 
     private static final long LOCK_TIMEOUT_MILLIS = 3000;
-    final ConcurrentHashMap<String, ChannelWrapper> channelTables = new ConcurrentHashMap<>();
+    final ConcurrentHashMap<String, RemotingChannelFuture> channelTables = new ConcurrentHashMap<>();
     private final Lock lockChannelTables = new ReentrantLock();
     private final Bootstrap clientBootstrap;
     private final RemotingClientConfig clientConfig;
@@ -50,7 +50,7 @@ public class ClientChannelManager {
     }
 
     void clear() {
-        for (ChannelWrapper cw : this.channelTables.values()) {
+        for (RemotingChannelFuture cw : this.channelTables.values()) {
             this.closeChannel(null, cw.getChannel());
         }
 
@@ -58,7 +58,7 @@ public class ClientChannelManager {
     }
 
     Channel createIfAbsent(final String addr) {
-        ChannelWrapper cw = this.channelTables.get(addr);
+        RemotingChannelFuture cw = this.channelTables.get(addr);
         if (cw != null && cw.isActive()) {
             return cw.getChannel();
         }
@@ -66,7 +66,7 @@ public class ClientChannelManager {
     }
 
     private Channel createChannel(final String addr) {
-        ChannelWrapper cw = null;
+        RemotingChannelFuture cw = null;
         try {
             if (this.lockChannelTables.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
                 try {
@@ -90,7 +90,7 @@ public class ClientChannelManager {
                         SocketAddress socketAddress = new InetSocketAddress(s[0], Integer.valueOf(s[1]));
                         ChannelFuture channelFuture = this.clientBootstrap.connect(socketAddress);
                         LOG.info("createChannel: begin to connect remote host[{}] asynchronously", addr);
-                        cw = new ChannelWrapper(channelFuture);
+                        cw = new RemotingChannelFuture(channelFuture);
                         this.channelTables.put(addr, cw);
                     }
                 } catch (Exception e) {
@@ -129,7 +129,7 @@ public class ClientChannelManager {
             if (this.lockChannelTables.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
                 try {
                     boolean removeItemFromTable = true;
-                    ChannelWrapper prevCW = this.channelTables.get(addrRemote);
+                    RemotingChannelFuture prevCW = this.channelTables.get(addrRemote);
                     //Workaround for null
                     if (null == prevCW) {
                         return;
@@ -171,11 +171,11 @@ public class ClientChannelManager {
             if (this.lockChannelTables.tryLock(LOCK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)) {
                 try {
                     boolean removeItemFromTable = true;
-                    ChannelWrapper prevCW = null;
+                    RemotingChannelFuture prevCW = null;
                     String addrRemote = null;
 
-                    for (Map.Entry<String, ChannelWrapper> entry : channelTables.entrySet()) {
-                        ChannelWrapper prev = entry.getValue();
+                    for (Map.Entry<String, RemotingChannelFuture> entry : channelTables.entrySet()) {
+                        RemotingChannelFuture prev = entry.getValue();
                         if (prev.getChannel() != null) {
                             if (prev.getChannel() == channel) {
                                 prevCW = prev;
@@ -208,10 +208,10 @@ public class ClientChannelManager {
         }
     }
 
-    private class ChannelWrapper {
+    private class RemotingChannelFuture {
         private final ChannelFuture channelFuture;
 
-        ChannelWrapper(ChannelFuture channelFuture) {
+        RemotingChannelFuture(ChannelFuture channelFuture) {
             this.channelFuture = channelFuture;
         }
 

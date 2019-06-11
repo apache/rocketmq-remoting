@@ -240,7 +240,7 @@ public class NettyRemotingAbstractTest extends BaseTest {
 
     @Test
     public void scanResponseTable_RemoveTimeoutRequest() throws InterruptedException {
-        final ObjectFuture<Throwable> objectFuture = newObjectFuture(1, 10);
+        final ObjectFuture<Throwable> objectFuture = newObjectFuture(1, 100);
 
         remotingAbstract.invokeAsyncWithInterceptor(new EmbeddedChannel(),
             remotingAbstract.commandFactory().createRequest(),
@@ -255,7 +255,7 @@ public class NettyRemotingAbstractTest extends BaseTest {
                 public void onSuccess(final RemotingCommand response) {
 
                 }
-            }, 10);
+            }, 100);
 
         TimeUnit.MILLISECONDS.sleep(15);
         remotingAbstract.scanResponseTable();
@@ -274,10 +274,10 @@ public class NettyRemotingAbstractTest extends BaseTest {
 
     @Test
     public void invokeWithInterceptor_Timeout() {
-        registerTimeoutProcessor(20);
+        registerTimeoutProcessor(200);
 
         try {
-            RemotingCommand response = remotingAbstract.invokeWithInterceptor(clientChannel, remotingRequest, 10);
+            RemotingCommand response = remotingAbstract.invokeWithInterceptor(clientChannel, remotingRequest, 100);
             failBecauseExceptionWasNotThrown(RemotingTimeoutException.class);
         } catch (Exception e) {
             assertThat(e).isInstanceOf(RemotingTimeoutException.class);
@@ -292,7 +292,7 @@ public class NettyRemotingAbstractTest extends BaseTest {
         channelPromise.setFailure(new UnitTestException());
 
         try {
-            RemotingCommand response = remotingAbstract.invokeWithInterceptor(mockedClientChannel, remotingRequest, 10);
+            RemotingCommand response = remotingAbstract.invokeWithInterceptor(mockedClientChannel, remotingRequest, 100);
             failBecauseExceptionWasNotThrown(RemotingAccessException.class);
         } catch (Exception e) {
             assertThat(e.getCause()).isInstanceOf(UnitTestException.class);
@@ -304,7 +304,7 @@ public class NettyRemotingAbstractTest extends BaseTest {
     public void invokeAsyncWithInterceptor_Success() {
         registerNormalProcessor();
 
-        final ObjectFuture<RemotingCommand> objectFuture = newObjectFuture(1, 10);
+        final ObjectFuture<RemotingCommand> objectFuture = newObjectFuture(1, 100);
 
         remotingAbstract.invokeAsyncWithInterceptor(clientChannel, remotingRequest, new AsyncHandler() {
             @Override
@@ -326,7 +326,7 @@ public class NettyRemotingAbstractTest extends BaseTest {
     public void invokeAsyncWithInterceptor_SemaphoreExhausted() {
         registerTimeoutProcessor(1000);
 
-        final ObjectFuture<Throwable> objectFuture = newObjectFuture(1, 10);
+        final ObjectFuture<Throwable> objectFuture = newObjectFuture(1, 100);
 
         for (int i = 0; i < semaphoreNum; i++) {
             remotingAbstract.invokeAsyncWithInterceptor(clientChannel, remotingRequest, null, 100);
@@ -355,7 +355,7 @@ public class NettyRemotingAbstractTest extends BaseTest {
         when(mockedClientChannel.writeAndFlush(any(Object.class))).thenReturn(channelPromise);
         channelPromise.setFailure(new UnitTestException());
 
-        final ObjectFuture<Throwable> objectFuture = newObjectFuture(1, 10);
+        final ObjectFuture<Throwable> objectFuture = newObjectFuture(1, 100);
 
         remotingAbstract.invokeAsyncWithInterceptor(mockedClientChannel, remotingRequest, new AsyncHandler() {
             @Override
@@ -368,14 +368,14 @@ public class NettyRemotingAbstractTest extends BaseTest {
             public void onSuccess(final RemotingCommand response) {
 
             }
-        }, 10);
+        }, 100);
 
         assertThat(objectFuture.getObject().getCause()).isInstanceOf(UnitTestException.class);
     }
 
     @Test
     public void invokeOnewayWithInterceptor_Success() {
-        ObjectFuture<RemotingCommand> objectFuture = newObjectFuture(1, 10);
+        ObjectFuture<RemotingCommand> objectFuture = newObjectFuture(1, 100);
         registerOnewayProcessor(objectFuture);
 
         remotingAbstract.invokeOnewayWithInterceptor(clientChannel, remotingRequest);

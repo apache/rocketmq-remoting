@@ -101,7 +101,7 @@ public class ResponseFutureTest extends BaseTest {
     @Test
     public void waitResponse_Timeout() {
         future = new ResponseFuture(1, 1000, null, null);
-        RemotingCommand response = future.waitResponse(10);
+        RemotingCommand response = future.waitResponse(100);
         assertNull(response);
     }
 }
