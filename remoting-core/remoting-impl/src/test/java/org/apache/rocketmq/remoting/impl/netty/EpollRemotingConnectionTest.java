@@ -59,24 +59,14 @@ public class EpollRemotingConnectionTest extends BaseTest {
 
     @BeforeClass
     public static void setUp() throws Exception {
-        RemotingClientConfig clientConfig = new RemotingClientConfig();
-        clientConfig.setRemotingShutdownQuietPeriodMillis(0);
-        clientConfig.setRemotingShutdownTimeoutMillis(10);
+        RemotingClientConfig clientConfig = clientConfig();
+        RemotingServerConfig serverConfig = serverConfig();
 
-        RemotingServerConfig serverConfig = new RemotingServerConfig();
-        serverConfig.setRemotingShutdownQuietPeriodMillis(0);
-        serverConfig.setRemotingShutdownTimeoutMillis(10);
+        RemotingClientConfig epollClientConfig = clientConfig();
 
-        RemotingClientConfig epollClientConfig = new RemotingClientConfig();
-        epollClientConfig.setClientNativeEpollEnable(true);
-        epollClientConfig.setRemotingShutdownQuietPeriodMillis(0);
-        epollClientConfig.setRemotingShutdownTimeoutMillis(10);
-
-        RemotingServerConfig epollServerConfig = new RemotingServerConfig();
+        RemotingServerConfig epollServerConfig = serverConfig();
         epollServerConfig.setServerNativeEpollEnable(true);
         epollServerConfig.setServerListenPort(9999);
-        epollServerConfig.setRemotingShutdownQuietPeriodMillis(0);
-        epollServerConfig.setRemotingShutdownTimeoutMillis(10);
 
         remotingClient = new NettyRemotingClient(clientConfig);
         remotingServer = new NettyRemotingServer(serverConfig);

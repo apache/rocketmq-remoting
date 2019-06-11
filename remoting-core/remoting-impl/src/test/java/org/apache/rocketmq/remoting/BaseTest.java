@@ -139,17 +139,18 @@ public class BaseTest {
         return objectFuture;
     }
 
-    protected RemotingClientConfig clientConfig() {
+    protected static RemotingClientConfig clientConfig() {
         RemotingClientConfig clientConfig = new RemotingClientConfig();
         clientConfig.setRemotingShutdownQuietPeriodMillis(0);
         clientConfig.setRemotingShutdownTimeoutMillis(10);
         return clientConfig;
     }
 
-    protected RemotingServerConfig serverConfig() {
+    protected static RemotingServerConfig serverConfig() {
         RemotingServerConfig serverConfig = new RemotingServerConfig();
         serverConfig.setRemotingShutdownQuietPeriodMillis(0);
         serverConfig.setRemotingShutdownTimeoutMillis(10);
+        serverConfig.setTcpSoReuseAddress(true);
         return serverConfig;
     }
 

@@ -49,13 +49,9 @@ public class NettyRemotingConnectionTest extends BaseTest {
 
     @BeforeClass
     public static void setUp() throws Exception {
-        RemotingClientConfig clientConfig = new RemotingClientConfig();
-        clientConfig.setRemotingShutdownQuietPeriodMillis(0);
-        clientConfig.setRemotingShutdownTimeoutMillis(10);
+        RemotingClientConfig clientConfig = clientConfig();
 
-        RemotingServerConfig serverConfig = new RemotingServerConfig();
-        serverConfig.setRemotingShutdownQuietPeriodMillis(0);
-        serverConfig.setRemotingShutdownTimeoutMillis(10);
+        RemotingServerConfig serverConfig = serverConfig();
 
         remotingClient = new NettyRemotingClient(clientConfig);
         remotingServer = new NettyRemotingServer(serverConfig);

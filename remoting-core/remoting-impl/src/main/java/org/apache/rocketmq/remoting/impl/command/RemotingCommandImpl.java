@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.EqualsExclude;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringExclude;
@@ -29,6 +30,7 @@ import org.apache.rocketmq.remoting.api.command.RemotingCommand;
 import org.apache.rocketmq.remoting.api.command.TrafficType;
 
 public class RemotingCommandImpl implements RemotingCommand {
+    @EqualsExclude
     public final static RequestIdGenerator REQUEST_ID_GENERATOR = RequestIdGenerator.inst;
 
     private short cmdCode;
