@@ -33,9 +33,9 @@
     </properties>
 
     <modules>
-        <module>remoting-core/remoting-api</module>
-        <module>remoting-core/remoting-impl</module>
-        <module>benchmarks/remoting-benchmark</module>
+        <module>api</module>
+        <module>impl</module>
+        <module>benchmark</module>
     </modules>
 
     <dependencies>

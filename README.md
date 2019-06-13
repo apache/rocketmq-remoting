@@ -1,3 +1,3 @@
-## Apache RocketMQ X
+## Remoting
 
-Apache RocketMQ X is the next generation of RocketMQ, which is extremely simple and high available.
+Remoting provides a single API for most network related service that uses pluggable transports and codecs. The Angelia API provides the ability for making synchronous, asynchronous, oneway remote calls, push and pull callbacks. The intention is to allow for the use of different transports to fit different needs, yet still maintain the same API for making the remote invocations and only requiring configuration changes, not code changes.
